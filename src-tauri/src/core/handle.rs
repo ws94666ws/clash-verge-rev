@@ -1,27 +1,20 @@
-use crate::{APP_HANDLE, singleton, utils::window_manager::WindowManager};
-use parking_lot::RwLock;
+use crate::{APP_HANDLE, singleton};
 use smartstring::alias::String;
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
-use tauri::{AppHandle, Manager as _, WebviewWindow};
+use std::sync::atomic::{AtomicBool, Ordering};
+use tauri::AppHandle;
 use tauri_plugin_mihomo::{Mihomo, MihomoExt as _};
-use tokio::sync::RwLockReadGuard;
 
 use super::notification::{FrontendEvent, NotificationSystem};
 
 #[derive(Debug)]
 pub struct Handle {
     is_exiting: AtomicBool,
-    pub(crate) notification_system: Arc<RwLock<Option<NotificationSystem>>>,
 }
 
 impl Default for Handle {
     fn default() -> Self {
         Self {
             is_exiting: AtomicBool::new(false),
-            notification_system: Arc::new(RwLock::new(Some(NotificationSystem::new()))),
         }
     }
 }
@@ -33,88 +26,62 @@ impl Handle {
         Self::default()
     }
 
-    pub fn init(&self) {
-        if self.is_exiting() {
-            return;
-        }
-
-        let mut system_opt = self.notification_system.write();
-        if let Some(system) = system_opt.as_mut()
-            && !system.is_running()
-        {
-            system.start();
-        }
-    }
-
     pub fn app_handle() -> &'static AppHandle {
         #[allow(clippy::expect_used)]
         APP_HANDLE.get().expect("App handle not initialized")
     }
 
-    pub async fn mihomo() -> RwLockReadGuard<'static, Mihomo> {
-        Self::app_handle().mihomo().read().await
-    }
-
-    pub fn get_window() -> Option<WebviewWindow> {
-        Self::app_handle().get_webview_window("main")
+    pub fn mihomo() -> &'static Mihomo {
+        Self::app_handle().mihomo()
     }
 
     pub fn refresh_clash() {
-        let handle = Self::global();
-        if handle.is_exiting() {
-            return;
-        }
-
-        let system_opt = handle.notification_system.read();
-        if let Some(system) = system_opt.as_ref() {
-            system.send_event(FrontendEvent::RefreshClash);
-        }
+        Self::send_event(FrontendEvent::RefreshClash);
     }
 
     pub fn refresh_verge() {
-        let handle = Self::global();
-        if handle.is_exiting() {
-            return;
-        }
-
-        let system_opt = handle.notification_system.read();
-        if let Some(system) = system_opt.as_ref() {
-            system.send_event(FrontendEvent::RefreshVerge);
-        }
+        Self::send_event(FrontendEvent::RefreshVerge);
     }
 
-    pub fn notify_profile_changed(profile_id: String) {
+    pub fn refresh_profiles() {
+        Self::send_event(FrontendEvent::RefreshProfiles);
+    }
+
+    pub fn refresh_proxy_config() {
+        Self::send_event(FrontendEvent::RefreshProxyConfig);
+    }
+
+    /// Push a Run State snapshot to the frontend.
+    ///
+    /// Sent on every transition, so the frontend does not have to poll to notice that the Core
+    /// stopped or that the Service came back.
+    pub fn notify_run_state(state: &crate::core::runstate::RunStateView) {
+        let Ok(state) = serde_json::to_value(state) else {
+            return;
+        };
+        Self::send_event(FrontendEvent::RunStateChanged { state });
+    }
+
+    pub fn notify_profile_changed(profile_id: &String) {
         Self::send_event(FrontendEvent::ProfileChanged {
             current_profile_id: profile_id,
         });
     }
 
-    pub fn notify_timer_updated(profile_index: String) {
+    pub fn notify_timer_updated(profile_index: &String) {
         Self::send_event(FrontendEvent::TimerUpdated { profile_index });
     }
 
-    pub fn notify_profile_update_started(uid: String) {
+    pub fn notify_profile_update_started(uid: &String) {
         Self::send_event(FrontendEvent::ProfileUpdateStarted { uid });
     }
 
-    pub fn notify_profile_update_completed(uid: String) {
+    pub fn notify_profile_update_completed(uid: &String) {
         Self::send_event(FrontendEvent::ProfileUpdateCompleted { uid });
     }
 
-    // TODO 利用 &str 等缩短 Clone
-    pub fn notice_message<S: Into<String>, M: Into<String>>(status: S, msg: M) {
-        let handle = Self::global();
-
-        if handle.is_exiting() {
-            return;
-        }
-
-        // We only send notice when main window exists
-        if WindowManager::get_main_window().is_none() {
-            return;
-        }
-
-        let status_str = status.into();
+    pub fn notice_message<S: AsRef<str>, M: Into<String>>(status: S, msg: M) {
+        let status_str = status.as_ref();
         let msg_str = msg.into();
 
         Self::send_event(FrontendEvent::NoticeMessage {
@@ -123,29 +90,25 @@ impl Handle {
         });
     }
 
+    pub fn set_is_exiting(&self) {
+        self.is_exiting.store(true, Ordering::Release);
+    }
+
+    pub fn clear_is_exiting(&self) {
+        self.is_exiting.store(false, Ordering::Release);
+    }
+
+    pub fn is_exiting(&self) -> bool {
+        self.is_exiting.load(Ordering::Acquire)
+    }
+
     fn send_event(event: FrontendEvent) {
         let handle = Self::global();
         if handle.is_exiting() {
             return;
         }
 
-        let system_opt = handle.notification_system.read();
-        if let Some(system) = system_opt.as_ref() {
-            system.send_event(event);
-        }
-    }
-
-    pub fn set_is_exiting(&self) {
-        self.is_exiting.store(true, Ordering::Release);
-
-        let mut system_opt = self.notification_system.write();
-        if let Some(system) = system_opt.as_mut() {
-            system.shutdown();
-        }
-    }
-
-    pub fn is_exiting(&self) -> bool {
-        self.is_exiting.load(Ordering::Acquire)
+        NotificationSystem::send_event(Self::app_handle().clone(), event);
     }
 }
 

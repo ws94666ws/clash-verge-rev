@@ -5,6 +5,7 @@
       "telegram": "Canal de Telegram",
       "github": "Dirección del proyecto en GitHub"
     },
+    "actionsGroupLabel": "Enlaces de configuración",
     "title": "Ajustes"
   },
   "sections": {
@@ -103,7 +104,31 @@
           "webUI": "Interfaz web",
           "clashCore": "Núcleo de Clash",
           "openUwpTool": "Abrir herramienta UWP",
-          "updateGeoData": "Actualizar GeoData"
+          "updateGeoData": "Actualizar GeoData",
+          "tunnels": {
+            "title": "Gestión de Túneles",
+            "localAddr": "Dirección de Escucha Local",
+            "localPort": "Puerto de Escucha Local",
+            "targetAddr": "Dirección de destino",
+            "targetPort": "Puerto de destino",
+            "proxyGroup": "Grupo de Proxy",
+            "proxyNode": "Nodo Proxy",
+            "protocols": "Protocolo",
+            "existing": "Túneles Existentes",
+            "default": "Seguir la Configuración Actual",
+            "optional": "Opcional",
+            "messages": {
+              "incomplete": "Por favor complete todos los campos obligatorios del túnel",
+              "invalidLocalAddr": "Dirección de escucha local no válida",
+              "invalidLocalPort": "Puerto de escucha local no válido",
+              "invalidTargetAddr": "Dirección de destino no válida",
+              "invalidTargetPort": "Puerto de destino no válido"
+            },
+            "actions": {
+              "add": "Agregar",
+              "addNew": "Agregar Nuevo Túnel"
+            }
+          }
         },
         "tooltips": {
           "networkInterface": "Interfaz de red",
@@ -216,7 +241,8 @@
           "systemProxyTrayIcon": "Icono de bandeja del proxy del sistema",
           "tunTrayIcon": "Icono de bandeja del modo TUN",
           "enableTrayIcon": "Habilitar icono de la bandeja",
-          "enableTraySpeed": "Habilitar velocidad en la bandeja"
+          "enableTraySpeed": "Habilitar velocidad en la bandeja",
+          "pauseRenderTrafficStatsOnBlur": "Pausar el renderizado de estadísticas de tráfico al perder el foco"
         },
         "tooltips": {
           "hoverNavigator": "Automatically scroll to the corresponding proxy group when hovering over alphabet letters",
@@ -259,7 +285,11 @@
       "messages": {
         "portInUse": "Port {{port}} is already in use",
         "saved": "Port settings saved",
-        "saveFailed": "Failed to save port settings"
+        "saveFailed": "Failed to save port settings",
+        "automaticFallback": "El puerto {{oldPort}} está en uso. El puerto proxy mixto se cambió a {{newPort}} y se guardó.",
+        "automaticFallbackFailed": "Error al cambiar automáticamente el puerto proxy mixto: {{error}}",
+        "portTooLow": "El puerto debe ser 1000 o superior",
+        "portTooHigh": "El puerto debe ser 65535 o inferior"
       }
     },
     "clashCore": {
@@ -335,7 +365,7 @@
         "scheduleHelper": "Create local backups in the background at the configured interval.",
         "intervalLabel": "Backup frequency",
         "changeLabel": "Backup on critical changes",
-        "changeHelper": "Automatically back up when the global extend config/script or subscriptions are added, removed, or edited.",
+        "changeHelper": "Automatically backup when Global Extend Config/Script changes.",
         "options": {
           "hours": "Every {{n}} hours",
           "days": "Every {{n}} days"
@@ -377,6 +407,7 @@
         "proxyLayoutColumns": "Número de columnas en la disposición de la página de proxy",
         "autoLogClean": "Limpiar registros automáticamente",
         "autoDelayDetection": "Detección automática de latencia",
+        "autoDelayDetectionInterval": "Intervalo de detección automática de latencia",
         "defaultLatencyTest": "Enlace de prueba de latencia predeterminado",
         "defaultLatencyTimeout": "Tiempo de espera de la prueba de latencia"
       },
@@ -403,8 +434,15 @@
         "update": "Actualizar"
       },
       "messages": {
-        "portableError": "La versión portátil no admite la actualización desde dentro de la aplicación. Descargue e instale manualmente la actualización.",
-        "breakChangeError": "Esta es una actualización importante y no se admite la actualización desde dentro de la aplicación. Desinstale e instale manualmente la nueva versión."
+        "breakChangeError": "Esta es una actualización importante y no se admite la actualización desde dentro de la aplicación. Desinstale e instale manualmente la nueva versión.",
+        "available": "Hay una nueva versión disponible"
+      },
+      "alerts": {
+        "note": "Nota",
+        "tip": "Consejo",
+        "important": "Importante",
+        "warning": "Advertencia",
+        "caution": "Precaución"
       }
     },
     "sysproxy": {
@@ -456,13 +494,15 @@
         "autoRedirect": "Automatically configures nftables/iptables TCP redirects"
       },
       "messages": {
-        "applied": "Ajustes aplicados"
+        "applied": "Ajustes aplicados",
+        "invalidRouteExcludeAddress": "Introduce un bloque CIDR válido",
+        "routeExcludeAddressHint": "Solo se admiten bloques CIDR de IPv4/IPv6, como 192.168.0.0/16 o fd00::/8"
       }
     },
     "dns": {
       "dialog": {
         "title": "Sobrescritura de DNS",
-        "warning": "Si no está seguro de cómo configurar esto, no realice cambios y mantenga habilitada la sobrescritura de DNS."
+        "warning": "Si no está seguro de cómo configurar esto, no realice cambios y mantenga deshabilitada la sobrescritura de DNS."
       },
       "sections": {
         "general": "Configuración de DNS",
@@ -474,6 +514,7 @@
         "listen": "Dirección de escucha de DNS",
         "enhancedMode": "Modo mejorado",
         "fakeIpRange": "Rango de Fake IP",
+        "fakeIpRange6": "Rango de Fake IP (IPv6)",
         "fakeIpFilterMode": "Modo de filtrado de Fake IP",
         "ipv6": {
           "label": "IPv6",
@@ -562,6 +603,11 @@
       "messages": {
         "supportedPlaceholders": "Soporta %host, %port, %secret",
         "placeholderInstruction": "Utilice %host, %port, %secret para representar el host, el puerto y la clave de acceso."
+      },
+      "errors": {
+        "clashInfoUnavailable": "La información de conexión del núcleo no está disponible",
+        "invalidServer": "La dirección del servidor del núcleo «{{server}}» no es válida",
+        "openFailed": "No se pudo abrir la interfaz web"
       }
     },
     "hotkey": {
@@ -580,11 +626,6 @@
         "reactivateProfiles": "Reactivar suscripciones"
       }
     },
-    "password": {
-      "prompts": {
-        "enterRoot": "Ingrese su contraseña de root"
-      }
-    },
     "networkInterface": {
       "title": "Interfaz de red",
       "fields": {
@@ -594,6 +635,22 @@
     }
   },
   "feedback": {
+    "errors": {
+      "clash": {
+        "configUpdateFailed": "No se pudo actualizar la configuración del núcleo",
+        "modeUpdateFailed": "No se pudo cambiar el modo de proxy",
+        "restartFailed": "No se pudo reiniciar el núcleo",
+        "startFailed": "No se pudo iniciar el núcleo",
+        "stopFailed": "No se pudo detener el núcleo"
+      },
+      "clashService": {
+        "installFailed": "No se pudo instalar el servicio",
+        "uninstallFailed": "No se pudo desinstalar el servicio",
+        "reinstallFailed": "No se pudo reinstalar el servicio",
+        "repairFailed": "No se pudo reparar el servicio",
+        "sidecarFailed": "No se pudo continuar con Sidecar"
+      }
+    },
     "notifications": {
       "clash": {
         "restartSuccess": "Núcleo de Clash reiniciado",

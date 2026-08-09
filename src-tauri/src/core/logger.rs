@@ -8,7 +8,6 @@ use std::{
 
 use anyhow::{Result, bail};
 use clash_verge_logging::{Type, logging};
-use clash_verge_service_ipc::WriterConfig;
 use compact_str::CompactString;
 use flexi_logger::{
     Cleanup, Criterion, DeferredNow, FileSpec, LogSpecBuilder, LogSpecification, LoggerHandle,
@@ -18,10 +17,14 @@ use log::{Level, LevelFilter, Record};
 use parking_lot::{Mutex, RwLock};
 
 use crate::{
-    core::service,
+    core::{CoreManager, manager::RunningMode, service},
     singleton,
-    utils::dirs::{self, service_log_dir, sidecar_log_dir},
+    utils::dirs::{self, sidecar_log_dir},
 };
+
+const fn should_sync_service_writer(running_mode: RunningMode) -> bool {
+    matches!(running_mode, RunningMode::Service)
+}
 
 pub struct Logger {
     handle: Arc<Mutex<Option<LoggerHandle>>>,
@@ -68,7 +71,7 @@ impl Logger {
         self.log_max_size.store(log_max_size, Ordering::SeqCst);
         self.log_max_count.store(log_max_count, Ordering::SeqCst);
 
-        #[cfg(not(feature = "tauri-dev"))]
+        #[cfg(not(any(feature = "tauri-dev", feature = "tokio-trace")))]
         {
             let log_spec = Self::generate_log_spec(log_level);
             let log_dir = dirs::app_logs_dir()?;
@@ -91,7 +94,10 @@ impl Logger {
             filter_modules.push("tauri");
             #[cfg(feature = "tracing")]
             filter_modules.extend(["tauri_plugin_mihomo", "kode_bridge"]);
-            let logger = logger.filter(Box::new(clash_verge_logging::NoModuleFilter(filter_modules)));
+            let logger = logger.filter(Box::new(clash_verge_logging::ModuleFilter::new(
+                filter_modules,
+                Some(vec!["tauri_plugin_mihomo"]),
+            )));
 
             let handle = logger.start()?;
             *self.handle.lock() = Some(handle);
@@ -99,6 +105,26 @@ impl Logger {
 
         let sidecar_file_writer = self.generate_sidecar_writer()?;
         *self.sidecar_file_writer.write() = Some(sidecar_file_writer);
+
+        std::panic::set_hook(Box::new(move |info| {
+            // Capture both common panic payload types instead of logging String payloads as unknown.
+            // This global hook covers panics after logger init; early setup panics are handled separately.
+            let payload = info
+                .payload()
+                .downcast_ref::<&str>()
+                .map(|s| (*s).to_string())
+                .or_else(|| info.payload().downcast_ref::<String>().cloned())
+                .unwrap_or_else(|| "Unknown panic payload".to_string());
+            let location = info
+                .location()
+                .map(|loc| format!("{}:{}", loc.file(), loc.line()))
+                .unwrap_or_else(|| "Unknown location".to_string());
+            logging!(error, Type::System, "Panic occurred at {}: {}", location, payload);
+            if let Some(h) = Self::global().handle.lock().as_ref() {
+                h.flush();
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+        }));
 
         Ok(())
     }
@@ -159,15 +185,17 @@ impl Logger {
         let sidecar_writer = self.generate_sidecar_writer()?;
         *self.sidecar_file_writer.write() = Some(sidecar_writer);
 
-        // update service writer config
-        if service::is_service_ipc_path_exists() && service::is_service_available().await.is_ok() {
-            let service_log_dir = dirs::path_to_str(&service_log_dir()?)?.into();
-            clash_verge_service_ipc::update_writer(&WriterConfig {
-                directory: service_log_dir,
+        // The service writer is auxiliary to the local logger. Synchronize it only
+        // for an active service session and do not roll back local settings on failure.
+        if should_sync_service_writer(*CoreManager::global().get_running_mode())
+            && let Err(error) = service::update_writer_by_service(&clash_verge_service_ipc::WriterConfig {
+                directory: String::new(),
                 max_log_size: log_max_size * 1024,
                 max_log_files: log_max_count,
             })
-            .await?;
+            .await
+        {
+            logging!(warn, Type::Service, "failed to update service writer config: {error:#}");
         }
 
         Ok(())
@@ -205,17 +233,17 @@ impl Logger {
             logging!(error, Type::System, "failed to get sidecar file log writer");
         }
     }
+}
 
-    pub fn service_writer_config(&self) -> Result<WriterConfig> {
-        let service_log_dir = dirs::path_to_str(&service_log_dir()?)?.into();
-        let log_max_size = self.log_max_size.load(Ordering::SeqCst);
-        let log_max_count = self.log_max_count.load(Ordering::SeqCst);
-        let writer_config = WriterConfig {
-            directory: service_log_dir,
-            max_log_size: log_max_size * 1024,
-            max_log_files: log_max_count,
-        };
+#[cfg(test)]
+mod tests {
+    use super::should_sync_service_writer;
+    use crate::core::manager::RunningMode;
 
-        Ok(writer_config)
+    #[test]
+    fn service_writer_sync_requires_service_running_mode() {
+        assert!(should_sync_service_writer(RunningMode::Service));
+        assert!(!should_sync_service_writer(RunningMode::Sidecar));
+        assert!(!should_sync_service_writer(RunningMode::NotRunning));
     }
 }

@@ -1,110 +1,136 @@
-import i18n from "i18next";
-import { ReactNode, isValidElement } from "react";
+import i18n from 'i18next'
+import { ReactNode, isValidElement } from 'react'
 
-type NoticeType = "success" | "error" | "info";
+type NoticeType = 'success' | 'error' | 'info'
 
-export interface NoticeTranslationDescriptor {
-  key: string;
-  params?: Record<string, unknown>;
+interface NoticeTranslationDescriptor {
+  key: string
+  params?: Record<string, unknown>
 }
 
 interface NoticeItem {
-  readonly id: number;
-  readonly type: NoticeType;
-  readonly duration: number;
-  readonly message?: ReactNode;
-  readonly i18n?: NoticeTranslationDescriptor;
-  timerId?: ReturnType<typeof setTimeout>;
+  readonly id: number
+  readonly type: NoticeType
+  readonly duration: number
+  readonly message?: ReactNode
+  readonly i18n?: NoticeTranslationDescriptor
+  timerId?: ReturnType<typeof setTimeout>
 }
 
-type NoticeContent = unknown;
+type NoticeContent = unknown
 
-type NoticeExtra = unknown;
+type NoticeExtra = unknown
 
 type NoticeShortcut = (
   message: NoticeContent,
   ...extras: NoticeExtra[]
-) => number;
+) => number
 
 type ShowNotice = ((
   type: NoticeType,
   message: NoticeContent,
   ...extras: NoticeExtra[]
 ) => number) & {
-  success: NoticeShortcut;
-  error: NoticeShortcut;
-  info: NoticeShortcut;
-};
+  success: NoticeShortcut
+  error: NoticeShortcut
+  info: NoticeShortcut
+}
 
-type NoticeSubscriber = () => void;
+type NoticeSubscriber = () => void
 
 const DEFAULT_DURATIONS: Readonly<Record<NoticeType, number>> = {
   success: 3000,
   info: 5000,
   error: 8000,
-};
+}
 
-const TRANSLATION_KEY_PATTERN = /^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+$/;
+const TRANSLATION_KEY_PATTERN = /^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+$/
+const CODED_ERROR_PATTERN = /^CVR_ERROR:([A-Z0-9_]+)(?:\n([\s\S]*))?$/
+const CODED_ERROR_TRANSLATION_KEYS: Readonly<Record<string, string>> = {
+  CLASH_CONFIG_UPDATE_FAILED:
+    'settings.feedback.errors.clash.configUpdateFailed',
+  CLASH_MODE_UPDATE_FAILED: 'settings.feedback.errors.clash.modeUpdateFailed',
+  CORE_CHANGE_FAILED: 'settings.feedback.notifications.clash.changeFailed',
+  CORE_RESTART_FAILED: 'settings.feedback.errors.clash.restartFailed',
+  CORE_START_FAILED: 'settings.feedback.errors.clash.startFailed',
+  CORE_STOP_FAILED: 'settings.feedback.errors.clash.stopFailed',
+  PROFILE_CREATE_FAILED: 'profiles.page.feedback.errors.createFailed',
+  PROFILE_DELETE_FAILED: 'profiles.page.feedback.errors.deleteFailed',
+  PROFILE_ENHANCE_FAILED: 'profiles.page.feedback.errors.enhanceFailed',
+  PROFILE_IMPORT_FAILED: 'profiles.page.feedback.errors.importFailed',
+  PROFILE_OPEN_FAILED: 'profiles.page.feedback.errors.openFailed',
+  PROFILE_READ_FAILED: 'profiles.page.feedback.errors.readFailed',
+  PROFILE_REORDER_FAILED: 'profiles.page.feedback.errors.reorderFailed',
+  PROFILE_SWITCH_FAILED: 'profiles.page.feedback.errors.switchFailed',
+  PROFILE_UPDATE_FAILED: 'profiles.page.feedback.errors.updateFailed',
+  SERVICE_INSTALL_FAILED: 'settings.feedback.errors.clashService.installFailed',
+  SERVICE_REINSTALL_FAILED:
+    'settings.feedback.errors.clashService.reinstallFailed',
+  SERVICE_REPAIR_FAILED: 'settings.feedback.errors.clashService.repairFailed',
+  SERVICE_SIDECAR_FAILED: 'settings.feedback.errors.clashService.sidecarFailed',
+  SERVICE_UNINSTALL_FAILED:
+    'settings.feedback.errors.clashService.uninstallFailed',
+}
 
-let nextId = 0;
-let notices: NoticeItem[] = [];
-const subscribers: Set<NoticeSubscriber> = new Set();
+let nextId = 0
+let notices: NoticeItem[] = []
+const subscribers: Set<NoticeSubscriber> = new Set()
 
 function notifySubscribers() {
-  subscribers.forEach((subscriber) => subscriber());
+  subscribers.forEach((subscriber) => subscriber())
 }
 
 interface ParsedNoticeExtras {
-  params?: Record<string, unknown>;
-  raw?: unknown;
-  duration?: number;
+  params?: Record<string, unknown>
+  raw?: unknown
+  duration?: number
 }
 
 function parseNoticeExtras(extras: NoticeExtra[]): ParsedNoticeExtras {
-  let params: Record<string, unknown> | undefined;
-  let raw: unknown;
-  let duration: number | undefined;
+  let params: Record<string, unknown> | undefined
+  let raw: unknown
+  let duration: number | undefined
 
   // Prioritize objects as translation params, then as raw payloads, while the first number wins as duration.
   for (const extra of extras) {
-    if (extra === undefined) continue;
+    if (extra === undefined) continue
 
-    if (typeof extra === "number" && duration === undefined) {
-      duration = extra;
-      continue;
+    if (typeof extra === 'number' && duration === undefined) {
+      duration = extra
+      continue
     }
 
     if (isPlainRecord(extra)) {
       if (!params) {
-        params = extra;
-        continue;
+        params = extra
+        continue
       }
       if (!raw) {
-        raw = extra;
-        continue;
+        raw = extra
+        continue
       }
     }
 
     if (!raw) {
-      raw = extra;
-      continue;
+      raw = extra
+      continue
     }
 
     if (!params && isPlainRecord(extra)) {
-      params = extra;
-      continue;
+      params = extra
+      continue
     }
 
-    if (duration === undefined && typeof extra === "number") {
-      duration = extra;
+    if (duration === undefined && typeof extra === 'number') {
+      duration = extra
     }
   }
 
-  return { params, raw, duration };
+  return { params, raw, duration }
 }
 
 function resolveDuration(type: NoticeType, override?: number) {
-  return override ?? DEFAULT_DURATIONS[type];
+  return override ?? DEFAULT_DURATIONS[type]
 }
 
 function buildNotice(
@@ -120,78 +146,91 @@ function buildNotice(
     duration,
     timerId,
     ...payload,
-  };
+  }
 }
 
 function isMaybeTranslationDescriptor(
   message: unknown,
 ): message is NoticeTranslationDescriptor {
   if (
-    typeof message === "object" &&
+    typeof message === 'object' &&
     message !== null &&
     !Array.isArray(message) &&
     !isValidElement(message)
   ) {
-    return typeof (message as Record<string, unknown>).key === "string";
+    return typeof (message as Record<string, unknown>).key === 'string'
   }
-  return false;
+  return false
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   if (
-    typeof value !== "object" ||
+    typeof value !== 'object' ||
     value === null ||
     Array.isArray(value) ||
     value instanceof Error ||
     isValidElement(value)
   ) {
-    return false;
+    return false
   }
 
-  const proto = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
 }
 
 function createRawDescriptor(message: string): NoticeTranslationDescriptor {
   return {
-    key: "shared.feedback.notices.raw",
+    key: 'shared.feedback.notices.raw',
     params: { message },
-  };
+  }
 }
 
 function isLikelyTranslationKey(key: string) {
-  return TRANSLATION_KEY_PATTERN.test(key);
+  return TRANSLATION_KEY_PATTERN.test(key)
 }
 
 function shouldUseTranslationKey(
   key: string,
   params?: Record<string, unknown>,
 ) {
-  if (params && Object.keys(params).length > 0) return true;
-  if (isLikelyTranslationKey(key)) return true;
+  if (params && Object.keys(params).length > 0) return true
+  if (isLikelyTranslationKey(key)) return true
   if (i18n.isInitialized) {
-    return i18n.exists(key);
+    return i18n.exists(key)
   }
-  return false;
+  return false
 }
 
 function extractDisplayText(input: unknown): string | undefined {
-  if (input === null || input === undefined) return undefined;
-  if (typeof input === "string") return input;
-  if (typeof input === "number" || typeof input === "boolean") {
-    return String(input);
+  if (input === null || input === undefined) return undefined
+  if (typeof input === 'string') return input
+  if (typeof input === 'number' || typeof input === 'boolean') {
+    return String(input)
   }
   if (input instanceof Error) {
-    return input.message || input.name;
+    return input.message || input.name
   }
-  if (typeof input === "object" && input !== null) {
-    const maybeMessage = (input as { message?: unknown }).message;
-    if (typeof maybeMessage === "string") return maybeMessage;
+  if (typeof input === 'object' && input !== null) {
+    const maybeMessage = (input as { message?: unknown }).message
+    if (typeof maybeMessage === 'string') return maybeMessage
   }
   try {
-    return JSON.stringify(input);
+    return JSON.stringify(input)
   } catch {
-    return String(input);
+    return String(input)
+  }
+}
+
+function parseCodedError(input?: string) {
+  if (!input) return undefined
+  const match = input.match(CODED_ERROR_PATTERN)
+  if (!match) return undefined
+
+  return {
+    translationKey:
+      CODED_ERROR_TRANSLATION_KEYS[match[1]] ??
+      'shared.feedback.errors.operationFailed',
+    detail: match[2]?.trim(),
   }
 }
 
@@ -200,30 +239,32 @@ function normalizeNoticeMessage(
   params?: Record<string, unknown>,
   raw?: unknown,
 ): { message?: ReactNode; i18n?: NoticeTranslationDescriptor } {
-  const rawText = raw !== undefined ? extractDisplayText(raw) : undefined;
+  const rawText = raw !== undefined ? extractDisplayText(raw) : undefined
+  const parsedRawError = parseCodedError(rawText)
+  const rawDetail = parsedRawError?.detail ?? rawText
 
   if (isValidElement(message)) {
-    return { message };
+    return { message }
   }
 
   if (isMaybeTranslationDescriptor(message)) {
-    const originalParams = message.params ?? {};
+    const originalParams = message.params ?? {}
     const mergedParams = Object.keys(params ?? {}).length
       ? { ...originalParams, ...params }
-      : { ...originalParams };
+      : { ...originalParams }
 
-    if (rawText !== undefined) {
+    if (rawDetail !== undefined) {
       return {
         i18n: {
-          key: "shared.feedback.notices.prefixedRaw",
+          key: 'shared.feedback.notices.prefixedRaw',
           params: {
             ...mergedParams,
             prefixKey: message.key,
             prefixParams: originalParams,
-            message: rawText,
+            message: rawDetail,
           },
         },
-      };
+      }
     }
 
     return {
@@ -231,34 +272,54 @@ function normalizeNoticeMessage(
         key: message.key,
         params: Object.keys(mergedParams).length ? mergedParams : undefined,
       },
-    };
+    }
   }
 
-  if (typeof message === "string") {
-    if (rawText !== undefined) {
+  const parsedMessageError = parseCodedError(extractDisplayText(message))
+  if (parsedMessageError) {
+    if (!parsedMessageError.detail) {
+      return {
+        i18n: {
+          key: parsedMessageError.translationKey,
+        },
+      }
+    }
+    return {
+      i18n: {
+        key: 'shared.feedback.notices.prefixedRaw',
+        params: {
+          prefixKey: parsedMessageError.translationKey,
+          message: parsedMessageError.detail,
+        },
+      },
+    }
+  }
+
+  if (typeof message === 'string') {
+    if (rawDetail !== undefined) {
       if (shouldUseTranslationKey(message, params)) {
         return {
           i18n: {
-            key: "shared.feedback.notices.prefixedRaw",
+            key: 'shared.feedback.notices.prefixedRaw',
             params: {
               ...(params ?? {}),
               prefixKey: message,
-              message: rawText,
+              message: rawDetail,
             },
           },
-        };
+        }
       }
       // Prefer showing the original string while still surfacing the raw details below.
       return {
         i18n: {
-          key: "shared.feedback.notices.prefixedRaw",
+          key: 'shared.feedback.notices.prefixedRaw',
           params: {
             ...(params ?? {}),
             prefix: message,
-            message: rawText,
+            message: rawDetail,
           },
         },
-      };
+      }
     }
 
     if (shouldUseTranslationKey(message, params)) {
@@ -267,21 +328,21 @@ function normalizeNoticeMessage(
           key: message,
           params: params && Object.keys(params).length ? params : undefined,
         },
-      };
+      }
     }
-    return { i18n: createRawDescriptor(message) };
+    return { i18n: createRawDescriptor(message) }
   }
 
-  if (rawText !== undefined) {
-    return { i18n: createRawDescriptor(rawText) };
+  if (rawDetail !== undefined) {
+    return { i18n: createRawDescriptor(rawDetail) }
   }
 
-  const extracted = extractDisplayText(message);
+  const extracted = extractDisplayText(message)
   if (extracted !== undefined) {
-    return { i18n: createRawDescriptor(extracted) };
+    return { i18n: createRawDescriptor(extracted) }
   }
 
-  return { i18n: createRawDescriptor("") };
+  return { i18n: createRawDescriptor('') }
 }
 
 const baseShowNotice = (
@@ -289,27 +350,27 @@ const baseShowNotice = (
   message: NoticeContent,
   ...extras: NoticeExtra[]
 ): number => {
-  const id = nextId++;
-  const { params, raw, duration } = parseNoticeExtras(extras);
-  const effectiveDuration = resolveDuration(type, duration);
+  const id = nextId++
+  const { params, raw, duration } = parseNoticeExtras(extras)
+  const effectiveDuration = resolveDuration(type, duration)
   const timerId =
     effectiveDuration > 0
       ? setTimeout(() => hideNotice(id), effectiveDuration)
-      : undefined;
+      : undefined
 
-  const normalizedMessage = normalizeNoticeMessage(message, params, raw);
+  const normalizedMessage = normalizeNoticeMessage(message, params, raw)
   const notice = buildNotice(
     id,
     type,
     effectiveDuration,
     normalizedMessage,
     timerId,
-  );
+  )
 
-  notices = [...notices, notice];
-  notifySubscribers();
-  return id;
-};
+  notices = [...notices, notice]
+  notifySubscribers()
+  return id
+}
 
 /**
  * Shows a global notice; `showNotice.success / error / info` are the usual entry points.
@@ -325,29 +386,29 @@ const baseShowNotice = (
  */
 export const showNotice: ShowNotice = Object.assign(baseShowNotice, {
   success: (message: NoticeContent, ...extras: NoticeExtra[]) =>
-    baseShowNotice("success", message, ...extras),
+    baseShowNotice('success', message, ...extras),
   error: (message: NoticeContent, ...extras: NoticeExtra[]) =>
-    baseShowNotice("error", message, ...extras),
+    baseShowNotice('error', message, ...extras),
   info: (message: NoticeContent, ...extras: NoticeExtra[]) =>
-    baseShowNotice("info", message, ...extras),
-});
+    baseShowNotice('info', message, ...extras),
+})
 
 export function hideNotice(id: number) {
-  const notice = notices.find((candidate) => candidate.id === id);
+  const notice = notices.find((candidate) => candidate.id === id)
   if (notice?.timerId) {
-    clearTimeout(notice.timerId);
+    clearTimeout(notice.timerId)
   }
-  notices = notices.filter((candidate) => candidate.id !== id);
-  notifySubscribers();
+  notices = notices.filter((candidate) => candidate.id !== id)
+  notifySubscribers()
 }
 
 export function subscribeNotices(subscriber: NoticeSubscriber) {
-  subscribers.add(subscriber);
+  subscribers.add(subscriber)
   return () => {
-    subscribers.delete(subscriber);
-  };
+    subscribers.delete(subscriber)
+  }
 }
 
 export function getSnapshotNotices() {
-  return notices;
+  return notices
 }

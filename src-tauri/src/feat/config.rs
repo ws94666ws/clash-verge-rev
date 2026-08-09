@@ -1,11 +1,11 @@
 use crate::{
     config::{Config, IVerge},
-    core::{CoreManager, handle, hotkey, logger::Logger, sysopt, tray},
+    core::{CoreManager, autostart, handle, hotkey, logger::Logger, tray},
     module::{auto_backup::AutoBackupManager, lightweight},
 };
 use anyhow::Result;
 use bitflags::bitflags;
-use clash_verge_draft::SharedDraft;
+use clash_verge_draft::{DraftTransaction, SharedDraft};
 use clash_verge_logging::{Type, logging, logging_error};
 use serde_yaml_ng::Mapping;
 
@@ -18,18 +18,14 @@ pub async fn patch_clash(patch: &Mapping) -> Result<()> {
         if patch.get("secret").is_some() || patch.get("external-controller").is_some() {
             Config::generate().await?;
             CoreManager::global().restart_core().await?;
+        } else if patch.get("allow-lan").is_some() {
+            CoreManager::global().update_config_checked().await?;
         } else {
             if patch.get("mode").is_some() {
-                logging_error!(Type::Tray, tray::Tray::global().update_menu().await);
-                logging_error!(
-                    Type::Tray,
-                    tray::Tray::global()
-                        .update_icon(&Config::verge().await.data_arc())
-                        .await
-                );
+                tray::Tray::global().update_menu_and_icon().await;
             }
             Config::runtime().await.edit_draft(|d| d.patch_config(patch));
-            CoreManager::global().update_config().await?;
+            CoreManager::global().update_config_checked().await?;
         }
         handle::Handle::refresh_clash();
         <Result<()>>::Ok(())
@@ -102,7 +98,10 @@ fn determine_update_flags(patch: &IVerge) -> UpdateFlags {
     let socks_port = patch.verge_socks_port;
     let http_enabled = patch.verge_http_enabled;
     let http_port = patch.verge_port;
+    #[cfg(target_os = "macos")]
     let enable_tray_speed = patch.enable_tray_speed;
+    #[cfg(not(target_os = "macos"))]
+    let enable_tray_speed: Option<bool> = None;
     // let enable_tray_icon = patch.enable_tray_icon;
     let enable_global_hotkey = patch.enable_global_hotkey;
     let tray_event = &patch.tray_event;
@@ -138,6 +137,7 @@ fn determine_update_flags(patch: &IVerge) -> UpdateFlags {
     #[cfg(target_os = "linux")]
     {
         restart_core_needed |= tproxy_enabled.is_some() || tproxy_port.is_some();
+        restart_core_needed |= tun_mode == Some(true);
     }
 
     let mut update_flags = UpdateFlags::empty();
@@ -208,17 +208,14 @@ async fn process_terminated_flags(update_flags: UpdateFlags, patch: &IVerge) -> 
         CoreManager::global().restart_core().await?;
     }
     if update_flags.contains(UpdateFlags::CLASH_CONFIG) {
-        CoreManager::global().update_config().await?;
+        CoreManager::global().update_config_checked().await?;
         handle::Handle::refresh_clash();
     }
     if update_flags.contains(UpdateFlags::VERGE_CONFIG) {
-        Config::verge()
-            .await
-            .edit_draft(|d| d.enable_global_hotkey = patch.enable_global_hotkey);
         handle::Handle::refresh_verge();
     }
     if update_flags.contains(UpdateFlags::LAUNCH) {
-        sysopt::Sysopt::global().update_launch().await?;
+        autostart::update_launch().await?;
     }
     if update_flags.contains(UpdateFlags::LANGUAGE)
         && let Some(language) = &patch.language
@@ -226,8 +223,9 @@ async fn process_terminated_flags(update_flags: UpdateFlags, patch: &IVerge) -> 
         clash_verge_i18n::set_locale(language.as_str());
     }
     if update_flags.contains(UpdateFlags::SYS_PROXY) {
-        sysopt::Sysopt::global().update_sysproxy().await?;
-        sysopt::Sysopt::global().refresh_guard().await;
+        let manager = CoreManager::global();
+        let _lifecycle = manager.lifecycle_lock.lock().await;
+        manager.apply_proxy_after_start().await?;
     }
     if update_flags.contains(UpdateFlags::HOTKEY)
         && let Some(hotkeys) = &patch.hotkeys
@@ -241,6 +239,10 @@ async fn process_terminated_flags(update_flags: UpdateFlags, patch: &IVerge) -> 
         tray::Tray::global()
             .update_icon(&Config::verge().await.latest_arc())
             .await?;
+        #[cfg(target_os = "macos")]
+        if patch.enable_tray_speed.is_some() {
+            tray::Tray::global().update_speed_task(patch.enable_tray_speed.unwrap_or(false));
+        }
     }
     if update_flags.contains(UpdateFlags::SYSTRAY_TOOLTIP) {
         tray::Tray::global().update_tooltip().await?;
@@ -266,25 +268,51 @@ async fn process_terminated_flags(update_flags: UpdateFlags, patch: &IVerge) -> 
     Ok(())
 }
 
+/// Apply a patch to the app's configuration, then re-check anything it can invalidate.
+///
+/// Today that is TUN, which is a question about the *setting* rather than about the Run State:
+/// no Run State transition follows a TUN patch, so the reconciliation that reacts to those
+/// would never see it. Switching TUN on from the global hotkey is the case that reaches here —
+/// unlike the tray item and the settings switch it is not gated on availability, and the flags
+/// the patch raises are answered by a Core reload that changes no Run State at all. Left alone
+/// the setting stays on and every surface reports TUN as enabled while nothing carries its
+/// traffic.
+///
+/// The reconciliation writes configuration of its own, so it goes through
+/// [`apply_verge_patch`] rather than back through here. That makes the absence of a cycle a
+/// property of the call graph rather than of a runtime early-return.
 pub async fn patch_verge(patch: &IVerge, not_save_file: bool) -> Result<()> {
-    Config::verge().await.edit_draft(|d| d.patch_config(patch));
+    apply_verge_patch(patch, not_save_file).await?;
+    if patch.enable_tun_mode.is_some() {
+        super::reconcile_tun_availability().await;
+    }
+    Ok(())
+}
+
+/// Apply a patch and nothing else. For callers that are themselves a reconciliation.
+pub(super) async fn apply_verge_patch(patch: &IVerge, not_save_file: bool) -> Result<()> {
+    let verge = Config::verge().await;
+    // Applying the flags can fail, and until now that `?` returned straight out of here past
+    // an `if let Err(..) { discard() }` the compiler could never reach — leaving the failed
+    // edit sitting in the draft, where every later reader saw a value that was never applied
+    // and never written to disk.
+    //
+    // Claiming the layer is what makes the rollback safe. This function holds its draft across
+    // `process_terminated_flags`, which restarts the Core and can take seconds; a second patch
+    // arriving in that window used to share the one draft slot, and whichever of the two failed
+    // first discarded the other's staged edit too.
+    let transaction = DraftTransaction::begin(vec![&verge])?;
+    verge.edit_draft(|d| d.patch_config(patch));
 
     let update_flags = determine_update_flags(patch);
     logging!(debug, Type::Setup, "Determined update flags: {:?}", update_flags);
-    let process_flag_result: std::result::Result<(), anyhow::Error> = {
-        process_terminated_flags(update_flags, patch).await?;
-        Ok(())
-    };
+    process_terminated_flags(update_flags, patch).await?;
+    transaction.commit();
 
-    if let Err(err) = process_flag_result {
-        Config::verge().await.discard();
-        return Err(err);
-    }
-    Config::verge().await.apply();
     logging_error!(Type::Backup, AutoBackupManager::global().refresh_settings().await);
     if !not_save_file {
         // 分离数据获取和异步调用
-        let verge_data = Config::verge().await.data_arc();
+        let verge_data = verge.data_arc();
         logging!(debug, Type::Setup, "Saving Verge configuration to file...");
         verge_data.save_file().await?;
     }

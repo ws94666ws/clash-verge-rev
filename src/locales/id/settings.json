@@ -5,6 +5,7 @@
       "telegram": "Saluran Telegram",
       "github": "Repositori Github"
     },
+    "actionsGroupLabel": "Tautan pengaturan",
     "title": "Pengaturan"
   },
   "sections": {
@@ -103,7 +104,31 @@
           "webUI": "Antarmuka Web",
           "clashCore": "Inti Clash",
           "openUwpTool": "Buka alat UWP",
-          "updateGeoData": "Perbarui GeoData"
+          "updateGeoData": "Perbarui GeoData",
+          "tunnels": {
+            "title": "Manajemen Terowongan",
+            "localAddr": "Alamat Dengarkan Lokal",
+            "localPort": "Port Dengarkan Lokal",
+            "targetAddr": "Alamat tujuan",
+            "targetPort": "Port tujuan",
+            "proxyGroup": "Grup Proxy",
+            "proxyNode": "Node Proxy",
+            "protocols": "Protokol",
+            "existing": "Terowongan yang Ada",
+            "default": "Ikuti Konfigurasi Saat Ini",
+            "optional": "Opsional",
+            "messages": {
+              "incomplete": "Silakan lengkapi semua kolom terowongan yang diperlukan",
+              "invalidLocalAddr": "Alamat dengarkan lokal tidak valid",
+              "invalidLocalPort": "Port dengarkan lokal tidak valid",
+              "invalidTargetAddr": "Alamat tujuan tidak valid",
+              "invalidTargetPort": "Port tujuan tidak valid"
+            },
+            "actions": {
+              "add": "Tambah",
+              "addNew": "Tambah Tunnel Baru"
+            }
+          }
         },
         "tooltips": {
           "networkInterface": "Antarmuka Jaringan",
@@ -216,7 +241,8 @@
           "systemProxyTrayIcon": "Ikon Tray Proksi Sistem",
           "tunTrayIcon": "Ikon Tray Tun",
           "enableTrayIcon": "Enable Tray Icon",
-          "enableTraySpeed": "Aktifkan Tray Speed"
+          "enableTraySpeed": "Aktifkan Tray Speed",
+          "pauseRenderTrafficStatsOnBlur": "Jeda render statistik lalu lintas saat jendela tidak fokus"
         },
         "tooltips": {
           "hoverNavigator": "Automatically scroll to the corresponding proxy group when hovering over alphabet letters",
@@ -259,7 +285,11 @@
       "messages": {
         "portInUse": "Port {{port}} is already in use",
         "saved": "Port settings saved",
-        "saveFailed": "Failed to save port settings"
+        "saveFailed": "Failed to save port settings",
+        "automaticFallback": "Port {{oldPort}} sedang digunakan. Port proxy campuran dialihkan ke {{newPort}} dan disimpan.",
+        "automaticFallbackFailed": "Pengalihan otomatis port proxy campuran gagal: {{error}}",
+        "portTooLow": "Port harus 1000 atau lebih tinggi",
+        "portTooHigh": "Port harus 65535 atau lebih rendah"
       }
     },
     "clashCore": {
@@ -335,7 +365,7 @@
         "scheduleHelper": "Create local backups in the background at the configured interval.",
         "intervalLabel": "Backup frequency",
         "changeLabel": "Backup on critical changes",
-        "changeHelper": "Automatically back up when the global extend config/script or subscriptions are added, removed, or edited.",
+        "changeHelper": "Automatically backup when Global Extend Config/Script changes.",
         "options": {
           "hours": "Every {{n}} hours",
           "days": "Every {{n}} days"
@@ -377,6 +407,7 @@
         "proxyLayoutColumns": "Kolom Tata Letak Proksi",
         "autoLogClean": "Pembersihan Log Otomatis",
         "autoDelayDetection": "Deteksi Latensi Otomatis",
+        "autoDelayDetectionInterval": "Interval Deteksi Latensi Otomatis",
         "defaultLatencyTest": "Tes Latensi Default",
         "defaultLatencyTimeout": "Waktu Habis Latensi Default"
       },
@@ -403,8 +434,15 @@
         "update": "Perbarui"
       },
       "messages": {
-        "portableError": "Versi portabel tidak mendukung pembaruan dalam aplikasi. Harap unduh dan ganti secara manual",
-        "breakChangeError": "Versi ini adalah pembaruan besar dan tidak mendukung pembaruan dalam aplikasi. Harap hapus instalasi dan unduh serta instal versi baru secara manual"
+        "breakChangeError": "Versi ini adalah pembaruan besar dan tidak mendukung pembaruan dalam aplikasi. Harap hapus instalasi dan unduh serta instal versi baru secara manual",
+        "available": "Versi baru tersedia"
+      },
+      "alerts": {
+        "note": "Catatan",
+        "tip": "Tips",
+        "important": "Penting",
+        "warning": "Peringatan",
+        "caution": "Perhatian"
       }
     },
     "sysproxy": {
@@ -456,13 +494,15 @@
         "autoRedirect": "Automatically configures nftables/iptables TCP redirects"
       },
       "messages": {
-        "applied": "Pengaturan Diterapkan"
+        "applied": "Pengaturan Diterapkan",
+        "invalidRouteExcludeAddress": "Masukkan blok CIDR yang valid",
+        "routeExcludeAddressHint": "Hanya CIDR IPv4/IPv6 yang didukung, seperti 192.168.0.0/16 atau fd00::/8"
       }
     },
     "dns": {
       "dialog": {
         "title": "DNS Overwrite",
-        "warning": "If you are not familiar with these settings, please do not modify them and keep DNS Overwrite enabled"
+        "warning": "If you are not familiar with these settings, please do not modify them and keep DNS Overwrite disabled"
       },
       "sections": {
         "general": "DNS Settings",
@@ -474,6 +514,7 @@
         "listen": "DNS Listen",
         "enhancedMode": "Enhanced Mode",
         "fakeIpRange": "Fake IP Range",
+        "fakeIpRange6": "Fake IP Range (IPv6)",
         "fakeIpFilterMode": "Fake IP Filter Mode",
         "ipv6": {
           "label": "IPv6",
@@ -562,6 +603,11 @@
       "messages": {
         "supportedPlaceholders": "Dukung %host, %port, %secret",
         "placeholderInstruction": "Ganti host, port, rahasia dengan %host, %port, %secret"
+      },
+      "errors": {
+        "clashInfoUnavailable": "Informasi koneksi core tidak tersedia",
+        "invalidServer": "Alamat server core \"{{server}}\" tidak valid",
+        "openFailed": "Gagal membuka Web UI"
       }
     },
     "hotkey": {
@@ -580,11 +626,6 @@
         "reactivateProfiles": "Reaktivasi Profil"
       }
     },
-    "password": {
-      "prompts": {
-        "enterRoot": "Harap masukkan kata sandi root Anda"
-      }
-    },
     "networkInterface": {
       "title": "Antarmuka Jaringan",
       "fields": {
@@ -594,6 +635,22 @@
     }
   },
   "feedback": {
+    "errors": {
+      "clash": {
+        "configUpdateFailed": "Gagal memperbarui konfigurasi core",
+        "modeUpdateFailed": "Gagal mengubah mode proxy",
+        "restartFailed": "Gagal memulai ulang core",
+        "startFailed": "Gagal memulai core",
+        "stopFailed": "Gagal menghentikan core"
+      },
+      "clashService": {
+        "installFailed": "Gagal memasang layanan",
+        "uninstallFailed": "Gagal mencopot layanan",
+        "reinstallFailed": "Gagal memasang ulang layanan",
+        "repairFailed": "Gagal memperbaiki layanan",
+        "sidecarFailed": "Gagal melanjutkan dengan Sidecar"
+      }
+    },
     "notifications": {
       "clash": {
         "restartSuccess": "Core Clash Dimulai Ulang",

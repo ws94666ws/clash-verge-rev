@@ -5,6 +5,7 @@
       "telegram": "Telegram 頻道",
       "github": "GitHub 專案位址"
     },
+    "actionsGroupLabel": "設定相關連結",
     "title": "設定"
   },
   "sections": {
@@ -103,7 +104,31 @@
           "webUI": "網頁介面",
           "clashCore": "Clash 內核",
           "openUwpTool": "UWP 工具",
-          "updateGeoData": "更新 GeoData"
+          "updateGeoData": "更新 GeoData",
+          "tunnels": {
+            "title": "流量隧道管理",
+            "localAddr": "本地監聽位址",
+            "localPort": "本地監聽連接埠",
+            "targetAddr": "目標地址",
+            "targetPort": "目標端口",
+            "proxyGroup": "代理群組",
+            "proxyNode": "代理節點",
+            "protocols": "協定",
+            "existing": "已設定的通道",
+            "default": "跟隨目前設定",
+            "optional": "可選",
+            "messages": {
+              "incomplete": "請完整填寫通道資訊",
+              "invalidLocalAddr": "無效的本地監聽位址",
+              "invalidLocalPort": "無效的本地監聽連接埠",
+              "invalidTargetAddr": "無效的目標地址",
+              "invalidTargetPort": "無效的目標端口"
+            },
+            "actions": {
+              "add": "新增",
+              "addNew": "新增通道"
+            }
+          }
         },
         "tooltips": {
           "networkInterface": "網路介面",
@@ -216,7 +241,8 @@
           "systemProxyTrayIcon": "系統代理系統匣圖示",
           "tunTrayIcon": "虛擬網路介面卡模式系統匣圖示",
           "enableTrayIcon": "啟用系統匣圖示",
-          "enableTraySpeed": "啟用系統匣速率"
+          "enableTraySpeed": "啟用系統匣速率",
+          "pauseRenderTrafficStatsOnBlur": "失去焦點時暫停渲染流量統計"
         },
         "tooltips": {
           "hoverNavigator": "滑鼠懸停在字母上時自動捲動到對應代理組",
@@ -259,7 +285,11 @@
       "messages": {
         "portInUse": "Port {{port}} is already in use",
         "saved": "連結埠設定已儲存",
-        "saveFailed": "連結埠設定儲存失敗"
+        "saveFailed": "連結埠設定儲存失敗",
+        "automaticFallback": "連結埠 {{oldPort}} 已被佔用，混合代理連結埠已自動切換並儲存為 {{newPort}}。",
+        "automaticFallbackFailed": "混合代理連結埠自動切換失敗：{{error}}",
+        "portTooLow": "連結埠不能小於 1000",
+        "portTooHigh": "連結埠不能大於 65535"
       }
     },
     "clashCore": {
@@ -335,7 +365,7 @@
         "scheduleHelper": "依設定頻率在背景建立本機備份檔案。",
         "intervalLabel": "備份頻率",
         "changeLabel": "關鍵變更時自動備份",
-        "changeHelper": "全域擴充配置/腳本或訂閱新增、刪除、修改時自動備份。",
+        "changeHelper": "Global Extend Config/Script 變更後自動備份。",
         "options": {
           "hours": "每 {{n}} 小時",
           "days": "每 {{n}} 天"
@@ -377,6 +407,7 @@
         "proxyLayoutColumns": "代理頁面欄數",
         "autoLogClean": "自動清理日誌",
         "autoDelayDetection": "自動延遲偵測",
+        "autoDelayDetectionInterval": "自動延遲偵測間隔",
         "defaultLatencyTest": "預設測試網址",
         "defaultLatencyTimeout": "測試逾時"
       },
@@ -403,8 +434,15 @@
         "update": "更新"
       },
       "messages": {
-        "portableError": "可攜式版不支援應用程式內更新，請手動下載替換",
-        "breakChangeError": "此版本為重大更新，不支援應用程式內更新，請解除安裝後手動下載安裝"
+        "breakChangeError": "此版本為重大更新，不支援應用程式內更新，請解除安裝後手動下載安裝",
+        "available": "有新版本可用"
+      },
+      "alerts": {
+        "note": "備註",
+        "tip": "提示",
+        "important": "重要",
+        "warning": "警告",
+        "caution": "注意"
       }
     },
     "sysproxy": {
@@ -456,13 +494,15 @@
         "autoRedirect": "自動配置 nftables/iptables 的 TCP 重導"
       },
       "messages": {
-        "applied": "設定已套用"
+        "applied": "設定已套用",
+        "invalidRouteExcludeAddress": "請輸入有效的 CIDR 網段",
+        "routeExcludeAddressHint": "僅支援 IPv4/IPv6 CIDR，例如 192.168.0.0/16 或 fd00::/8"
       }
     },
     "dns": {
       "dialog": {
         "title": "DNS 覆寫",
-        "warning": "如果你不清楚這裡的設定請不要修改，並保持 DNS 覆寫開啟"
+        "warning": "如果你不清楚這裡的設定請不要修改，並保持 DNS 覆寫關閉"
       },
       "sections": {
         "general": "DNS 設定",
@@ -474,6 +514,7 @@
         "listen": "DNS 監聽位址",
         "enhancedMode": "增強模式",
         "fakeIpRange": "Fake IP 範圍",
+        "fakeIpRange6": "Fake IP 範圍 (IPv6)",
         "fakeIpFilterMode": "Fake IP 篩選模式",
         "ipv6": {
           "label": "IPv6",
@@ -562,6 +603,11 @@
       "messages": {
         "supportedPlaceholders": "支援 %host, %port, %secret",
         "placeholderInstruction": "使用 %host, %port, %secret 表示 主機, 連接埠, 存取金鑰"
+      },
+      "errors": {
+        "clashInfoUnavailable": "內核連線資訊暫時無法取得",
+        "invalidServer": "內核伺服器位址「{{server}}」無效",
+        "openFailed": "開啟 Web UI 失敗"
       }
     },
     "hotkey": {
@@ -580,11 +626,6 @@
         "reactivateProfiles": "重新啟用訂閱"
       }
     },
-    "password": {
-      "prompts": {
-        "enterRoot": "請輸入您的 root 密碼"
-      }
-    },
     "networkInterface": {
       "title": "網路介面",
       "fields": {
@@ -594,6 +635,22 @@
     }
   },
   "feedback": {
+    "errors": {
+      "clash": {
+        "configUpdateFailed": "更新內核設定失敗",
+        "modeUpdateFailed": "切換代理模式失敗",
+        "restartFailed": "重啟內核失敗",
+        "startFailed": "啟動內核失敗",
+        "stopFailed": "停止內核失敗"
+      },
+      "clashService": {
+        "installFailed": "安裝服務失敗",
+        "uninstallFailed": "解除安裝服務失敗",
+        "reinstallFailed": "重新安裝服務失敗",
+        "repairFailed": "修復服務失敗",
+        "sidecarFailed": "繼續使用 Sidecar 失敗"
+      }
+    },
     "notifications": {
       "clash": {
         "restartSuccess": "已重啟 Clash 內核",

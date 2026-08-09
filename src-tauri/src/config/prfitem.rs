@@ -12,6 +12,9 @@ use serde_yaml_ng::Mapping;
 use smartstring::alias::String;
 use std::time::Duration;
 use tokio::fs;
+// TODO, use other re-export
+use reqwest_dav::re_exports::url::form_urlencoded;
+use tauri::Url;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct PrfItem {
@@ -60,7 +63,7 @@ pub struct PrfItem {
     pub file_data: Option<String>,
 }
 
-#[derive(Default, Debug, Clone, Deserialize, Serialize)]
+#[derive(Default, Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct PrfSelected {
     pub name: Option<String>,
     pub now: Option<String>,
@@ -259,7 +262,7 @@ impl PrfItem {
         let with_proxy = option.is_some_and(|o| o.with_proxy.unwrap_or(false));
         let self_proxy = option.is_some_and(|o| o.self_proxy.unwrap_or(false));
         let accept_invalid_certs = option.is_some_and(|o| o.danger_accept_invalid_certs.unwrap_or(false));
-        let allow_auto_update = option.map(|o| o.allow_auto_update.unwrap_or(true));
+        let allow_auto_update = Some(allow_auto_update_enabled(option));
         let user_agent = option.and_then(|o| o.user_agent.clone());
         let update_interval = option.and_then(|o| o.update_interval);
         let timeout = option.and_then(|o| o.timeout_seconds).unwrap_or(20);
@@ -278,15 +281,23 @@ impl PrfItem {
             ProxyType::None
         };
 
+        let url = fix_dirty_url(url)?;
+
         // 使用网络管理器发送请求
         let resp = match NetworkManager::new()
-            .get_with_interrupt(url, proxy_type, Some(timeout), user_agent.clone(), accept_invalid_certs)
+            .get_with_interrupt(
+                url.as_str(),
+                proxy_type,
+                Some(timeout),
+                user_agent.clone(),
+                accept_invalid_certs,
+            )
             .await
         {
             Ok(r) => r,
             Err(e) => {
                 tokio::time::sleep(Duration::from_millis(100)).await;
-                bail!("failed to fetch remote profile: {}", e);
+                return Err(e).context("failed to fetch remote profile");
             }
         };
 
@@ -340,7 +351,9 @@ impl PrfItem {
                     },
                 }
             }
-            None => Some(crate::utils::help::get_last_part_and_decode(url).unwrap_or_else(|| "Remote File".into())),
+            None => {
+                Some(crate::utils::help::get_last_part_and_decode(url.as_str()).unwrap_or_else(|| "Remote File".into()))
+            }
         };
         let update_interval = match update_interval {
             Some(val) => Some(val),
@@ -410,7 +423,7 @@ impl PrfItem {
             name: Some(name),
             desc: desc.cloned(),
             file: Some(file),
-            url: Some(url.into()),
+            url: Some(url.as_str().into()),
             selected: None,
             extra,
             option: Some(PrfOption {
@@ -520,7 +533,9 @@ impl PrfItem {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("could not find the file"))?;
         let path = dirs::app_profiles_dir()?.join(file.as_str());
-        let content = fs::read_to_string(path).await.context("failed to read the file")?;
+        let content = fs::read_to_string(&path)
+            .await
+            .with_context(|| format!("failed to read the file \"{}\"", path.display()))?;
         Ok(content.into())
     }
 
@@ -568,4 +583,53 @@ impl PrfItem {
 #[allow(clippy::unnecessary_wraps)]
 const fn default_allow_auto_update() -> Option<bool> {
     Some(true)
+}
+
+fn allow_auto_update_enabled(option: Option<&PrfOption>) -> bool {
+    option.and_then(|o| o.allow_auto_update).unwrap_or(true)
+}
+
+/// Fix URLs where query parameters are incorrectly appended to the path segment
+///
+/// Incorrect Example: https://example.com/path&param1=value1
+fn fix_dirty_url(input: &str) -> Result<Url> {
+    let mut url = match Url::parse(input) {
+        Ok(u) => u,
+        Err(e) => {
+            return Err(anyhow::anyhow!(
+                "failed to parse subscription URL: {:?}, input: {}",
+                e,
+                help::mask_url(input)
+            ));
+        }
+    };
+
+    if url.query().is_none() && url.path().contains('&') {
+        let path = url.path().to_string();
+
+        if let Some((clean_path, dirty_params)) = path.split_once('&') {
+            url.set_path(clean_path);
+
+            url.query_pairs_mut()
+                .extend_pairs(form_urlencoded::parse(dirty_params.as_bytes()));
+        }
+    }
+
+    Ok(url)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{PrfOption, allow_auto_update_enabled};
+
+    #[test]
+    fn auto_update_defaults_to_enabled_and_preserves_explicit_false() {
+        assert!(allow_auto_update_enabled(None));
+
+        let disabled = PrfOption {
+            allow_auto_update: Some(false),
+            ..PrfOption::default()
+        };
+        assert!(!allow_auto_update_enabled(Some(&disabled)));
+    }
 }

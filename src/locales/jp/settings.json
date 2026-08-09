@@ -5,6 +5,7 @@
       "telegram": "Telegramチャンネル",
       "github": "GitHubリポジトリ"
     },
+    "actionsGroupLabel": "設定リンク",
     "title": "設定"
   },
   "sections": {
@@ -103,7 +104,31 @@
           "webUI": "Webインターフェース",
           "clashCore": "Clashコア",
           "openUwpTool": "UWPツールを開く",
-          "updateGeoData": "GeoDataを更新"
+          "updateGeoData": "GeoDataを更新",
+          "tunnels": {
+            "title": "トンネル管理",
+            "localAddr": "ローカル待受アドレス",
+            "localPort": "ローカル待受ポート",
+            "targetAddr": "ターゲットアドレス",
+            "targetPort": "ターゲットポート",
+            "proxyGroup": "プロキシグループ",
+            "proxyNode": "プロキシノード",
+            "protocols": "プロトコル",
+            "existing": "既存のトンネル",
+            "default": "現在の設定に従う",
+            "optional": "任意",
+            "messages": {
+              "incomplete": "必須のトンネル項目をすべて入力してください",
+              "invalidLocalAddr": "無効なローカル待受アドレスです",
+              "invalidLocalPort": "無効なローカル待受ポートです",
+              "invalidTargetAddr": "無効なターゲットアドレス",
+              "invalidTargetPort": "無効なターゲットポート"
+            },
+            "actions": {
+              "add": "追加",
+              "addNew": "新しいトンネルを追加"
+            }
+          }
         },
         "tooltips": {
           "networkInterface": "ネットワークインターフェース",
@@ -216,7 +241,8 @@
           "systemProxyTrayIcon": "システムプロキシトレイアイコン",
           "tunTrayIcon": "TUNモードトレイアイコン",
           "enableTrayIcon": "トレイアイコンを有効にする",
-          "enableTraySpeed": "トレイの速度表示を有効にする"
+          "enableTraySpeed": "トレイの速度表示を有効にする",
+          "pauseRenderTrafficStatsOnBlur": "フォーカスを失ったときにトラフィック統計の描画を一時停止"
         },
         "tooltips": {
           "hoverNavigator": "Automatically scroll to the corresponding proxy group when hovering over alphabet letters",
@@ -259,7 +285,11 @@
       "messages": {
         "portInUse": "Port {{port}} is already in use",
         "saved": "Port settings saved",
-        "saveFailed": "Failed to save port settings"
+        "saveFailed": "Failed to save port settings",
+        "automaticFallback": "ポート {{oldPort}} は使用中です。混合プロキシポートを {{newPort}} に切り替えて保存しました。",
+        "automaticFallbackFailed": "混合プロキシポートの自動切り替えに失敗しました: {{error}}",
+        "portTooLow": "ポート番号は 1000 以上である必要があります",
+        "portTooHigh": "ポート番号は 65535 以下である必要があります"
       }
     },
     "clashCore": {
@@ -335,7 +365,7 @@
         "scheduleHelper": "Create local backups in the background at the configured interval.",
         "intervalLabel": "Backup frequency",
         "changeLabel": "Backup on critical changes",
-        "changeHelper": "Automatically back up when the global extend config/script or subscriptions are added, removed, or edited.",
+        "changeHelper": "Automatically backup when Global Extend Config/Script changes.",
         "options": {
           "hours": "Every {{n}} hours",
           "days": "Every {{n}} days"
@@ -377,6 +407,7 @@
         "proxyLayoutColumns": "プロキシページのレイアウト列数",
         "autoLogClean": "ログを自動的にクリーンアップ",
         "autoDelayDetection": "自動遅延検出",
+        "autoDelayDetectionInterval": "自動遅延検出間隔",
         "defaultLatencyTest": "デフォルトの遅延テストURL",
         "defaultLatencyTimeout": "テストタイムアウト時間"
       },
@@ -403,8 +434,15 @@
         "update": "更新"
       },
       "messages": {
-        "portableError": "ポータブル版ではアプリケーション内での更新はサポートされていません。手動でダウンロードして置き換えてください。",
-        "breakChangeError": "このバージョンは重大な更新であり、アプリケーション内での更新はサポートされていません。アンインストールしてから手動でダウンロードしてインストールしてください。"
+        "breakChangeError": "このバージョンは重大な更新であり、アプリケーション内での更新はサポートされていません。アンインストールしてから手動でダウンロードしてインストールしてください。",
+        "available": "新しいバージョンが利用可能です"
+      },
+      "alerts": {
+        "note": "メモ",
+        "tip": "ヒント",
+        "important": "重要",
+        "warning": "警告",
+        "caution": "注意"
       }
     },
     "sysproxy": {
@@ -456,13 +494,15 @@
         "autoRedirect": "Automatically configures nftables/iptables TCP redirects"
       },
       "messages": {
-        "applied": "設定が適用されました。"
+        "applied": "設定が適用されました",
+        "invalidRouteExcludeAddress": "有効な CIDR ブロックを入力してください",
+        "routeExcludeAddressHint": "IPv4/IPv6 の CIDR のみ対応しています。例: 192.168.0.0/16、fd00::/8"
       }
     },
     "dns": {
       "dialog": {
         "title": "DNS上書き",
-        "warning": "ここの設定がわからない場合は、変更しないでください。DNS上書きを有効にしたままにしてください。"
+        "warning": "ここの設定がわからない場合は、変更しないでください。DNS上書きを無効にしたままにしてください。"
       },
       "sections": {
         "general": "DNS設定",
@@ -474,6 +514,7 @@
         "listen": "DNS監視アドレス",
         "enhancedMode": "拡張モード",
         "fakeIpRange": "Fake IP範囲",
+        "fakeIpRange6": "Fake IP範囲 (IPv6)",
         "fakeIpFilterMode": "Fake IPフィルターモード",
         "ipv6": {
           "label": "IPv6",
@@ -562,6 +603,11 @@
       "messages": {
         "supportedPlaceholders": "%host, %port, %secretをサポートします。",
         "placeholderInstruction": "%host, %port, %secretを使用してホスト、ポート、アクセスキーを表します。"
+      },
+      "errors": {
+        "clashInfoUnavailable": "コアの接続情報を取得できません",
+        "invalidServer": "コアサーバーアドレス「{{server}}」が無効です",
+        "openFailed": "Web UI を開けませんでした"
       }
     },
     "hotkey": {
@@ -580,11 +626,6 @@
         "reactivateProfiles": "プロファイルを再アクティブ化"
       }
     },
-    "password": {
-      "prompts": {
-        "enterRoot": "ルートパスワードを入力してください。"
-      }
-    },
     "networkInterface": {
       "title": "ネットワークインターフェース",
       "fields": {
@@ -594,6 +635,22 @@
     }
   },
   "feedback": {
+    "errors": {
+      "clash": {
+        "configUpdateFailed": "コア設定の更新に失敗しました",
+        "modeUpdateFailed": "プロキシモードの変更に失敗しました",
+        "restartFailed": "コアの再起動に失敗しました",
+        "startFailed": "コアの起動に失敗しました",
+        "stopFailed": "コアの停止に失敗しました"
+      },
+      "clashService": {
+        "installFailed": "サービスのインストールに失敗しました",
+        "uninstallFailed": "サービスのアンインストールに失敗しました",
+        "reinstallFailed": "サービスの再インストールに失敗しました",
+        "repairFailed": "サービスの修復に失敗しました",
+        "sidecarFailed": "Sidecar での続行に失敗しました"
+      }
+    },
     "notifications": {
       "clash": {
         "restartSuccess": "Clashコアが再起動されました。",

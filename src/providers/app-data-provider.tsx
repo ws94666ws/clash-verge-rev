@@ -1,344 +1,292 @@
-import { listen } from "@tauri-apps/api/event";
-import React, { useCallback, useEffect, useMemo } from "react";
-import useSWR from "swr";
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   getBaseConfig,
   getRuleProviders,
   getRules,
-} from "tauri-plugin-mihomo-api";
+} from 'tauri-plugin-mihomo-api'
 
-import { useVerge } from "@/hooks/use-verge";
+import { useClashInfo, useRuntimeConfig } from '@/hooks/use-clash'
+import { runStateQueryKey } from '@/hooks/use-system-state'
+import { useVerge } from '@/hooks/use-verge'
 import {
-  calcuProxies,
-  calcuProxyProviders,
   getAppUptime,
-  getRunningMode,
+  getProxyView,
+  getRuntimeState,
   getSystemProxy,
-} from "@/services/cmds";
-import { SWR_DEFAULTS, SWR_REALTIME, SWR_SLOW_POLL } from "@/services/config";
+} from '@/services/cmds'
+import { subscribeVergeEvents } from '@/services/events'
+import { revalidateQueries, useQuery } from '@/services/query-client'
+import { resolveDisplayedMixedPort } from '@/utils/mixed-port'
 
-import { AppDataContext, AppDataContextType } from "./app-data-context";
+import {
+  ClashConfigContext,
+  CoreDataStatusContext,
+  ProxiesContext,
+  RefreshersContext,
+  RulesContext,
+  SystemContext,
+  UptimeContext,
+} from './app-data-context'
+
+const TQ_MIHOMO = {
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+  staleTime: 1500,
+  retry: 3,
+  retryDelay: (attempt: number) => Math.min(200 * 2 ** attempt, 3000),
+} as const
+
+const TQ_DEFAULTS = {
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+  staleTime: 5000,
+  retry: 2,
+} as const
+
+function useStableFn<T extends (...args: any[]) => any>(fn: T): T {
+  const ref = useRef(fn)
+  ref.current = fn
+  return useCallback((...args: Parameters<T>) => ref.current(...args), []) as T
+}
 
 // 全局数据提供者组件
 export const AppDataProvider = ({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) => {
-  const { verge } = useVerge();
+  const { verge } = useVerge()
+  const { data: runtimeConfig } = useRuntimeConfig()
+  const { clashInfo } = useClashInfo()
 
-  const { data: proxiesData, mutate: refreshProxy } = useSWR(
-    "getProxies",
-    calcuProxies,
-    {
-      ...SWR_REALTIME,
-      onError: (err) => console.warn("[DataProvider] Proxy fetch failed:", err),
-    },
-  );
+  const {
+    data: proxyView,
+    error: proxyViewError,
+    isPending: isProxyViewPending,
+    refetch: _refetchProxyView,
+  } = useQuery({
+    queryKey: ['getProxyView'],
+    queryFn: getProxyView,
+    refetchInterval: 3000,
+    refetchIntervalInBackground: false,
+    ...TQ_MIHOMO,
+  })
 
-  const { data: clashConfig, mutate: refreshClashConfig } = useSWR(
-    "getClashConfig",
-    getBaseConfig,
-    SWR_SLOW_POLL,
-  );
+  const {
+    data: clashConfig,
+    isPending: isClashConfigPending,
+    refetch: _refetchClashConfig,
+  } = useQuery({
+    queryKey: ['getClashConfig'],
+    queryFn: getBaseConfig,
+    ...TQ_MIHOMO,
+  })
 
-  const { data: proxyProviders, mutate: refreshProxyProviders } = useSWR(
-    "getProxyProviders",
-    calcuProxyProviders,
-    SWR_DEFAULTS,
-  );
+  const { data: ruleProviders, refetch: _refetchRuleProviders } = useQuery({
+    queryKey: ['getRuleProviders'],
+    queryFn: getRuleProviders,
+    ...TQ_MIHOMO,
+    revalidateOnMount: false,
+  })
 
-  const { data: ruleProviders, mutate: refreshRuleProviders } = useSWR(
-    "getRuleProviders",
-    getRuleProviders,
-    SWR_DEFAULTS,
-  );
+  const { data: rulesData, refetch: _refetchRules } = useQuery({
+    queryKey: ['getRules'],
+    queryFn: getRules,
+    ...TQ_MIHOMO,
+  })
 
-  const { data: rulesData, mutate: refreshRules } = useSWR(
-    "getRules",
-    getRules,
-    SWR_DEFAULTS,
-  );
+  const { data: sysproxy, refetch: _refetchSysproxy } = useQuery({
+    queryKey: ['getSystemProxy'],
+    queryFn: getSystemProxy,
+    ...TQ_DEFAULTS,
+  })
+
+  // Same key as `useSystemState`, so this is the one Run State cache entry, not a second one.
+  const { data: runState, isPending: isRunningModePending } = useQuery({
+    queryKey: runStateQueryKey,
+    queryFn: getRuntimeState,
+    ...TQ_DEFAULTS,
+  })
+  const runningMode = runState?.mode
+
+  const { data: uptimeData } = useQuery({
+    queryKey: ['appUptime'],
+    queryFn: getAppUptime,
+    ...TQ_DEFAULTS,
+    refetchInterval: 3000,
+    retry: 1,
+  })
+
+  const refreshProxy = useStableFn(_refetchProxyView)
+  const refreshClashConfig = useStableFn(_refetchClashConfig)
+  const refreshRules = useStableFn(_refetchRules)
+  const refreshSysproxy = useStableFn(_refetchSysproxy)
+  const refreshRuleProviders = useStableFn(_refetchRuleProviders)
 
   useEffect(() => {
-    let lastProfileId: string | null = null;
-    let lastUpdateTime = 0;
-    const refreshThrottle = 800;
-
-    let isUnmounted = false;
-    const scheduledTimeouts = new Set<number>();
-    const cleanupFns: Array<() => void> = [];
-
-    const registerCleanup = (fn: () => void) => {
-      if (isUnmounted) {
-        try {
-          fn();
-        } catch (error) {
-          console.error("[DataProvider] Immediate cleanup failed:", error);
-        }
-      } else {
-        cleanupFns.push(fn);
-      }
-    };
-
-    const addWindowListener = (eventName: string, handler: EventListener) => {
-      // eslint-disable-next-line @eslint-react/web-api/no-leaked-event-listener
-      window.addEventListener(eventName, handler);
-      return () => window.removeEventListener(eventName, handler);
-    };
-
-    const scheduleTimeout = (
-      callback: () => void | Promise<void>,
-      delay: number,
-    ) => {
-      if (isUnmounted) return -1;
-
-      const timeoutId = window.setTimeout(() => {
-        scheduledTimeouts.delete(timeoutId);
-        if (!isUnmounted) {
-          void callback();
-        }
-      }, delay);
-
-      scheduledTimeouts.add(timeoutId);
-      return timeoutId;
-    };
-
-    const clearAllTimeouts = () => {
-      scheduledTimeouts.forEach((timeoutId) => clearTimeout(timeoutId));
-      scheduledTimeouts.clear();
-    };
-
-    const handleProfileChanged = (event: { payload: string }) => {
-      const newProfileId = event.payload;
-      const now = Date.now();
-
+    let lastProfileId: string | null = null
+    let lastProfileUpdateTime = 0
+    let lastProxyUpdateTime = 0
+    const refreshThrottle = 800
+    const handleProfileChanged = (newProfileId: string) => {
+      const now = Date.now()
       if (
         lastProfileId === newProfileId &&
-        now - lastUpdateTime < refreshThrottle
+        now - lastProfileUpdateTime < refreshThrottle
       ) {
-        return;
+        return
       }
-
-      lastProfileId = newProfileId;
-      lastUpdateTime = now;
-
-      scheduleTimeout(() => {
-        refreshRules().catch((error) =>
-          console.warn("[DataProvider] Rules refresh failed:", error),
-        );
-        refreshRuleProviders().catch((error) =>
-          console.warn("[DataProvider] Rule providers refresh failed:", error),
-        );
-      }, 200);
-    };
-
-    const handleRefreshClash = () => {
-      const now = Date.now();
-      if (now - lastUpdateTime <= refreshThrottle) return;
-
-      lastUpdateTime = now;
-      scheduleTimeout(async () => {
-        await Promise.all([
-          refreshProxy().catch((error) =>
-            console.error("[DataProvider] Proxy refresh failed:", error),
-          ),
-          refreshClashConfig().catch((error) =>
-            console.error("[DataProvider] Clash config refresh failed:", error),
-          ),
-        ]);
-      }, 200);
-    };
+      lastProfileId = newProfileId
+      lastProfileUpdateTime = now
+      void revalidateQueries([['getProfiles']])
+    }
 
     const handleRefreshProxy = () => {
-      const now = Date.now();
-      if (now - lastUpdateTime <= refreshThrottle) return;
+      const now = Date.now()
+      if (now - lastProxyUpdateTime <= refreshThrottle) return
+      lastProxyUpdateTime = now
+      refreshProxy().catch(() => {})
+    }
 
-      lastUpdateTime = now;
-      scheduleTimeout(() => {
-        refreshProxy().catch((error) =>
-          console.warn("[DataProvider] Proxy refresh failed:", error),
-        );
-      }, 200);
-    };
+    const handleRefreshProfiles = () => {
+      void revalidateQueries([['getProfiles']])
+    }
 
-    const initializeListeners = async () => {
-      try {
-        const unlistenProfile = await listen<string>(
-          "profile-changed",
-          handleProfileChanged,
-        );
-        registerCleanup(unlistenProfile);
-      } catch (error) {
-        console.error("[AppDataProvider] 监听 Profile 事件失败:", error);
-      }
+    return subscribeVergeEvents({
+      'profile-changed': handleProfileChanged,
+      'verge://refresh-profiles': handleRefreshProfiles,
+      'verge://refresh-proxy-config': handleRefreshProxy,
+    })
+  }, [refreshProxy])
 
-      try {
-        const unlistenClash = await listen(
-          "verge://refresh-clash-config",
-          handleRefreshClash,
-        );
-        const unlistenProxy = await listen(
-          "verge://refresh-proxy-config",
-          handleRefreshProxy,
-        );
-
-        registerCleanup(() => {
-          unlistenClash();
-          unlistenProxy();
-        });
-      } catch (error) {
-        console.warn("[AppDataProvider] 设置 Tauri 事件监听器失败:", error);
-
-        const fallbackHandlers: Array<[string, EventListener]> = [
-          ["verge://refresh-clash-config", handleRefreshClash],
-          ["verge://refresh-proxy-config", handleRefreshProxy],
-        ];
-
-        fallbackHandlers.forEach(([eventName, handler]) => {
-          registerCleanup(addWindowListener(eventName, handler));
-        });
-      }
-    };
-
-    void initializeListeners();
-
-    return () => {
-      isUnmounted = true;
-      clearAllTimeouts();
-
-      const errors: Error[] = [];
-      cleanupFns.splice(0).forEach((fn) => {
-        try {
-          fn();
-        } catch (error) {
-          errors.push(
-            error instanceof Error ? error : new Error(String(error)),
-          );
-        }
-      });
-
-      if (errors.length > 0) {
-        console.error(
-          `[DataProvider] ${errors.length} errors during cleanup:`,
-          errors,
-        );
-      }
-    };
-  }, [refreshProxy, refreshClashConfig, refreshRules, refreshRuleProviders]);
-
-  const { data: sysproxy, mutate: refreshSysproxy } = useSWR(
-    "getSystemProxy",
-    getSystemProxy,
-    SWR_DEFAULTS,
-  );
-
-  const { data: runningMode } = useSWR(
-    "getRunningMode",
-    getRunningMode,
-    SWR_DEFAULTS,
-  );
-
-  const { data: uptimeData } = useSWR("appUptime", getAppUptime, {
-    ...SWR_DEFAULTS,
-    refreshInterval: 3000,
-    errorRetryCount: 1,
-  });
-
-  // 提供统一的刷新方法
   const refreshAll = useCallback(async () => {
     await Promise.all([
       refreshProxy(),
       refreshClashConfig(),
       refreshRules(),
       refreshSysproxy(),
-      refreshProxyProviders(),
       refreshRuleProviders(),
-    ]);
+    ])
   }, [
     refreshProxy,
     refreshClashConfig,
     refreshRules,
     refreshSysproxy,
-    refreshProxyProviders,
     refreshRuleProviders,
-  ]);
+  ])
 
-  // 聚合所有数据
-  const value = useMemo(() => {
-    // 计算系统代理地址
+  const proxiesValue = useMemo(
+    () => ({
+      proxyView,
+      isProxyViewPending,
+      isProxyViewError: Boolean(proxyViewError),
+    }),
+    [proxyView, isProxyViewPending, proxyViewError],
+  )
+
+  const rulesValue = useMemo(
+    () => ({
+      rules: rulesData?.rules ?? [],
+      ruleProviders: ruleProviders?.providers || {},
+    }),
+    [rulesData, ruleProviders],
+  )
+
+  const clashConfigValue = useMemo(
+    () => ({
+      clashConfig,
+      isClashConfigPending,
+    }),
+    [clashConfig, isClashConfigPending],
+  )
+
+  // Resolved from local sources rather than via useDisplayedMixedPort: that hook reads the
+  // ClashConfig context, and this component is the one providing it.
+  const displayedMixedPort = resolveDisplayedMixedPort({
+    live: clashConfig?.mixedPort,
+    runtime: runtimeConfig?.['mixed-port'],
+    selected: verge?.verge_mixed_port,
+    merge: clashInfo?.mixed_port,
+  })
+
+  const systemValue = useMemo(() => {
     const calculateSystemProxyAddress = () => {
-      if (!verge || !clashConfig) return "-";
+      if (!verge) return '-'
 
-      const isPacMode = verge.proxy_auto_config ?? false;
+      const isPacMode = verge.proxy_auto_config ?? false
 
       if (isPacMode) {
         // PAC模式：显示我们期望设置的代理地址
-        const proxyHost = verge.proxy_host || "127.0.0.1";
-        const proxyPort =
-          verge.verge_mixed_port || clashConfig.mixedPort || 7897;
-        return `${proxyHost}:${proxyPort}`;
+        const proxyHost = verge.proxy_host || '127.0.0.1'
+        return `${proxyHost}:${displayedMixedPort}`
       } else {
         // HTTP代理模式：优先使用系统地址，但如果格式不正确则使用期望地址
-        const systemServer = sysproxy?.server;
+        const systemServer = sysproxy?.server
         if (
           systemServer &&
-          systemServer !== "-" &&
-          !systemServer.startsWith(":")
+          systemServer !== '-' &&
+          !systemServer.startsWith(':')
         ) {
-          return systemServer;
+          return systemServer
         } else {
           // 系统地址无效，返回期望的代理地址
-          const proxyHost = verge.proxy_host || "127.0.0.1";
-          const proxyPort =
-            verge.verge_mixed_port || clashConfig.mixedPort || 7897;
-          return `${proxyHost}:${proxyPort}`;
+          const proxyHost = verge.proxy_host || '127.0.0.1'
+          return `${proxyHost}:${displayedMixedPort}`
         }
       }
-    };
+    }
 
     return {
-      // 数据
-      proxies: proxiesData,
-      clashConfig,
-      rules: rulesData?.rules || [],
       sysproxy,
       runningMode,
-      uptime: uptimeData || 0,
-
-      // 提供者数据
-      proxyProviders: proxyProviders || {},
-      ruleProviders: ruleProviders?.providers || {},
-
+      isRunningModePending,
       systemProxyAddress: calculateSystemProxyAddress(),
+    }
+  }, [sysproxy, runningMode, isRunningModePending, verge, displayedMixedPort])
 
-      // 刷新方法
+  const uptimeValue = useMemo(() => ({ uptime: uptimeData || 0 }), [uptimeData])
+
+  const coreDataStatusValue = useMemo(
+    () => ({
+      isCoreDataPending: isProxyViewPending || isClashConfigPending,
+    }),
+    [isProxyViewPending, isClashConfigPending],
+  )
+
+  const refreshersValue = useMemo(
+    () => ({
       refreshProxy,
       refreshClashConfig,
       refreshRules,
       refreshSysproxy,
-      refreshProxyProviders,
       refreshRuleProviders,
       refreshAll,
-    } as AppDataContextType;
-  }, [
-    proxiesData,
-    clashConfig,
-    rulesData,
-    sysproxy,
-    runningMode,
-    uptimeData,
-    proxyProviders,
-    ruleProviders,
-    verge,
-    refreshProxy,
-    refreshClashConfig,
-    refreshRules,
-    refreshSysproxy,
-    refreshProxyProviders,
-    refreshRuleProviders,
-    refreshAll,
-  ]);
+    }),
+    [
+      refreshProxy,
+      refreshClashConfig,
+      refreshRules,
+      refreshSysproxy,
+      refreshRuleProviders,
+      refreshAll,
+    ],
+  )
 
-  return <AppDataContext value={value}>{children}</AppDataContext>;
-};
+  return (
+    <ProxiesContext value={proxiesValue}>
+      <RulesContext value={rulesValue}>
+        <ClashConfigContext value={clashConfigValue}>
+          <SystemContext value={systemValue}>
+            <UptimeContext value={uptimeValue}>
+              <CoreDataStatusContext value={coreDataStatusValue}>
+                <RefreshersContext value={refreshersValue}>
+                  {children}
+                </RefreshersContext>
+              </CoreDataStatusContext>
+            </UptimeContext>
+          </SystemContext>
+        </ClashConfigContext>
+      </RulesContext>
+    </ProxiesContext>
+  )
+}

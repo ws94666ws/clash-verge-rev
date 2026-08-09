@@ -1,10 +1,10 @@
 use super::CmdResult;
 use crate::cmd::StringifyErr as _;
+use crate::core::sysopt::Sysopt;
 use clash_verge_logging::{Type, logging};
 use gethostname::gethostname;
 use network_interface::NetworkInterface;
 use serde_yaml_ng::Mapping;
-use std::net::TcpListener;
 use sysproxy::{Autoproxy, Sysproxy};
 use tauri_plugin_clash_verge_sysinfo;
 
@@ -13,6 +13,7 @@ use tauri_plugin_clash_verge_sysinfo;
 pub async fn get_sys_proxy() -> CmdResult<Mapping> {
     logging!(debug, Type::Network, "异步获取系统代理配置");
 
+    Sysopt::global().wait_idle().await;
     let sys_proxy = Sysproxy::get_system_proxy().stringify_err()?;
     let Sysproxy {
         ref host,
@@ -40,6 +41,7 @@ pub async fn get_sys_proxy() -> CmdResult<Mapping> {
 /// 获取自动代理配置
 #[tauri::command]
 pub async fn get_auto_proxy() -> CmdResult<Mapping> {
+    Sysopt::global().wait_idle().await;
     let auto_proxy = Autoproxy::get_auto_proxy().stringify_err()?;
     let Autoproxy { ref enable, ref url } = auto_proxy;
 
@@ -55,6 +57,11 @@ pub async fn get_auto_proxy() -> CmdResult<Mapping> {
         auto_proxy.url
     );
     Ok(map)
+}
+
+#[tauri::command]
+pub fn get_embedded_server_port() -> CmdResult<u16> {
+    crate::utils::server::embedded_server_port().stringify_err()
 }
 
 /// 获取系统主机名
@@ -95,9 +102,4 @@ pub fn get_network_interfaces_info() -> CmdResult<Vec<NetworkInterface>> {
     }
 
     Ok(result)
-}
-
-#[tauri::command]
-pub fn is_port_in_use(port: u16) -> bool {
-    TcpListener::bind(("127.0.0.1", port)).is_err()
 }

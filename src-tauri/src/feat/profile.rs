@@ -1,12 +1,12 @@
 use crate::{
     cmd,
     config::{Config, PrfItem, PrfOption, profiles::profiles_draft_update_item_safe},
-    core::{CoreManager, handle, tray},
+    core::{CoreManager, handle, tray, validate::ValidationOutcome},
+    utils::help::{mask_err, mask_url},
 };
 use anyhow::{Result, bail};
 use clash_verge_logging::{Type, logging, logging_error};
 use smartstring::alias::String;
-use tauri::Emitter as _;
 
 /// Toggle proxy profile
 pub async fn toggle_proxy_profile(profile_index: String) {
@@ -16,15 +16,32 @@ pub async fn toggle_proxy_profile(profile_index: String) {
     );
 }
 
+/// Tell the profile which node this group is on now.
+///
+/// The core is already switched by the time this runs, so failing to record is not a reason to
+/// report the switch as failed — but it is worth a log line, because what the profile holds is
+/// what gets re-applied the next time a core starts.
+async fn record_switched_node(group_name: &str, proxy_name: &str) {
+    if let Err(error) = crate::config::profiles::record_selected_node(group_name, proxy_name).await {
+        logging!(
+            warn,
+            Type::Tray,
+            "切换代理成功但未能记录到配置: {} -> {}, 错误: {error:#}",
+            group_name,
+            proxy_name
+        );
+    }
+}
+
 pub async fn switch_proxy_node(group_name: &str, proxy_name: &str) {
     match handle::Handle::mihomo()
-        .await
         .select_node_for_group(group_name, proxy_name)
         .await
     {
         Ok(_) => {
             logging!(info, Type::Tray, "切换代理成功: {} -> {}", group_name, proxy_name);
-            let _ = handle::Handle::app_handle().emit("verge://refresh-proxy-config", ());
+            record_switched_node(group_name, proxy_name).await;
+            handle::Handle::refresh_proxy_config();
             let _ = tray::Tray::global().update_menu().await;
             return;
         }
@@ -41,12 +58,12 @@ pub async fn switch_proxy_node(group_name: &str, proxy_name: &str) {
     }
 
     match handle::Handle::mihomo()
-        .await
         .select_node_for_group(group_name, proxy_name)
         .await
     {
         Ok(_) => {
             logging!(info, Type::Tray, "代理切换回退成功: {} -> {}", group_name, proxy_name);
+            record_switched_node(group_name, proxy_name).await;
             let _ = tray::Tray::global().update_menu().await;
         }
         Err(err) => {
@@ -83,9 +100,11 @@ async fn should_update_profile(uid: &String, ignore_auto_update: bool) -> Result
             Type::Config,
             "[订阅更新] {} 是远程订阅，URL: {}",
             uid,
-            item.url
-                .as_ref()
-                .ok_or_else(|| anyhow::anyhow!("Profile URL is None"))?
+            mask_url(
+                item.url
+                    .as_ref()
+                    .ok_or_else(|| anyhow::anyhow!("Profile URL is None"))?
+            )
         );
         Ok(Some((
             item.url.clone().ok_or_else(|| anyhow::anyhow!("Profile URL is None"))?,
@@ -99,6 +118,7 @@ async fn perform_profile_update(
     url: &String,
     opt: Option<&PrfOption>,
     option: Option<&PrfOption>,
+    is_mannual_trigger: bool,
 ) -> Result<bool> {
     logging!(info, Type::Config, "[订阅更新] 开始下载新的订阅内容");
     let mut merged_opt = PrfOption::merge(opt, option);
@@ -125,7 +145,8 @@ async fn perform_profile_update(
             logging!(
                 warn,
                 Type::Config,
-                "Warning: [订阅更新] 正常更新失败: {err}，尝试使用Clash代理更新"
+                "Warning: [订阅更新] 正常更新失败: {}，尝试使用Clash代理更新",
+                mask_err(&err.to_string())
             );
             last_err = err;
         }
@@ -146,7 +167,8 @@ async fn perform_profile_update(
             logging!(
                 warn,
                 Type::Config,
-                "Warning: [订阅更新] 正常更新失败: {err}，尝试使用Clash代理更新"
+                "Warning: [订阅更新] Clash代理更新失败: {}，尝试使用系统代理更新",
+                mask_err(&err.to_string())
             );
             last_err = err;
         }
@@ -167,13 +189,16 @@ async fn perform_profile_update(
             logging!(
                 warn,
                 Type::Config,
-                "Warning: [订阅更新] 正常更新失败: {err}，尝试使用系统代理更新"
+                "Warning: [订阅更新] 系统代理更新失败: {}，所有重试均已失败",
+                mask_err(&err.to_string())
             );
             last_err = err;
         }
     }
 
-    handle::Handle::notice_message("update_failed_even_with_clash", format!("{profile_name} - {last_err}"));
+    if is_mannual_trigger {
+        handle::Handle::notice_message("update_failed_even_with_clash", format!("{profile_name} - {last_err}"));
+    }
     Ok(is_current)
 }
 
@@ -182,21 +207,32 @@ pub async fn update_profile(
     option: Option<&PrfOption>,
     auto_refresh: bool,
     ignore_auto_update: bool,
+    is_mannual_trigger: bool,
 ) -> Result<()> {
     logging!(info, Type::Config, "[订阅更新] 开始更新订阅 {}", uid);
     let url_opt = should_update_profile(uid, ignore_auto_update).await?;
 
     let should_refresh = match url_opt {
-        Some((url, opt)) => perform_profile_update(uid, &url, opt.as_ref(), option).await? && auto_refresh,
+        Some((url, opt)) => {
+            perform_profile_update(uid, &url, opt.as_ref(), option, is_mannual_trigger).await? && auto_refresh
+        }
         None => auto_refresh,
     };
 
     if should_refresh {
         logging!(info, Type::Config, "[订阅更新] 更新内核配置");
-        match CoreManager::global().update_config().await {
-            Ok(_) => {
+        match CoreManager::global().update_config_with_force(is_mannual_trigger).await {
+            Ok(outcome) if outcome.is_valid() => {
                 logging!(info, Type::Config, "[订阅更新] 更新成功");
                 handle::Handle::refresh_clash();
+            }
+            Ok(outcome @ (ValidationOutcome::Skipped { .. } | ValidationOutcome::Busy)) if !is_mannual_trigger => {
+                logging!(info, Type::Config, "[订阅更新] 本次配置刷新已跳过: {}", outcome);
+            }
+            Ok(outcome) => {
+                let message = outcome.to_string();
+                logging!(error, Type::Config, "[订阅更新] 更新失败: {}", message);
+                handle::Handle::notice_message("update_failed", message);
             }
             Err(err) => {
                 logging!(error, Type::Config, "[订阅更新] 更新失败: {}", err);
@@ -210,6 +246,6 @@ pub async fn update_profile(
 }
 
 /// 增强配置
-pub async fn enhance_profiles() -> Result<(bool, String)> {
-    crate::core::CoreManager::global().update_config().await
+pub async fn enhance_profiles() -> Result<ValidationOutcome> {
+    CoreManager::global().update_config_forced().await
 }

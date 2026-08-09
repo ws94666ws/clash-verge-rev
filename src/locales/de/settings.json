@@ -5,6 +5,7 @@
       "telegram": "Telegram-Kanal",
       "github": "GitHub-Projektadresse"
     },
+    "actionsGroupLabel": "Einstellungslinks",
     "title": "Einstellungen"
   },
   "sections": {
@@ -103,7 +104,31 @@
           "webUI": "Web-Oberfläche",
           "clashCore": "Clash-Kern",
           "openUwpTool": "UWP-Tool öffnen",
-          "updateGeoData": "Geo-Daten aktualisieren"
+          "updateGeoData": "Geo-Daten aktualisieren",
+          "tunnels": {
+            "title": "Tunnel-Verwaltung",
+            "localAddr": "Lokale Abhöradresse",
+            "localPort": "Lokaler Abhörport",
+            "targetAddr": "Zieladresse",
+            "targetPort": "Zielport",
+            "proxyGroup": "Proxy-Gruppe",
+            "proxyNode": "Proxy-Knoten",
+            "protocols": "Protokoll",
+            "existing": "Vorhandene Tunnel",
+            "default": "Aktueller Konfiguration folgen",
+            "optional": "Optional",
+            "messages": {
+              "incomplete": "Bitte alle erforderlichen Tunnel-Felder ausfüllen",
+              "invalidLocalAddr": "Ungültige lokale Abhöradresse",
+              "invalidLocalPort": "Ungültiger lokaler Abhörport",
+              "invalidTargetAddr": "Ungültige Zieladresse",
+              "invalidTargetPort": "Ungültiger Zielport"
+            },
+            "actions": {
+              "add": "Hinzufügen",
+              "addNew": "Neuen Tunnel hinzufügen"
+            }
+          }
         },
         "tooltips": {
           "networkInterface": "Netzwerkschnittstelle",
@@ -216,7 +241,8 @@
           "systemProxyTrayIcon": "Systemproxy-Tray-Symbol",
           "tunTrayIcon": "TUN-Modus-Tray-Symbol",
           "enableTrayIcon": "Tray-Symbol aktivieren",
-          "enableTraySpeed": "Tray-Geschwindigkeit aktivieren"
+          "enableTraySpeed": "Tray-Geschwindigkeit aktivieren",
+          "pauseRenderTrafficStatsOnBlur": "Rendering der Verkehrsstatistiken bei Fokusverlust pausieren"
         },
         "tooltips": {
           "hoverNavigator": "Automatically scroll to the corresponding proxy group when hovering over alphabet letters",
@@ -259,7 +285,11 @@
       "messages": {
         "portInUse": "Port {{port}} is already in use",
         "saved": "Port settings saved",
-        "saveFailed": "Failed to save port settings"
+        "saveFailed": "Failed to save port settings",
+        "automaticFallback": "Port {{oldPort}} ist belegt. Der gemischte Proxy-Port wurde auf {{newPort}} geändert und gespeichert.",
+        "automaticFallbackFailed": "Der automatische Wechsel des gemischten Proxy-Ports ist fehlgeschlagen: {{error}}",
+        "portTooLow": "Der Port muss mindestens 1000 sein",
+        "portTooHigh": "Der Port darf höchstens 65535 sein"
       }
     },
     "clashCore": {
@@ -335,7 +365,7 @@
         "scheduleHelper": "Create local backups in the background at the configured interval.",
         "intervalLabel": "Backup frequency",
         "changeLabel": "Backup on critical changes",
-        "changeHelper": "Automatically back up when the global extend config/script or subscriptions are added, removed, or edited.",
+        "changeHelper": "Automatically backup when Global Extend Config/Script changes.",
         "options": {
           "hours": "Every {{n}} hours",
           "days": "Every {{n}} days"
@@ -377,6 +407,7 @@
         "proxyLayoutColumns": "Anzahl der Spalten im Proxy-Layout",
         "autoLogClean": "Protokolle automatisch bereinigen",
         "autoDelayDetection": "Automatische Latenzprüfung",
+        "autoDelayDetectionInterval": "Intervall für automatische Latenzprüfung",
         "defaultLatencyTest": "Standard-Testlink",
         "defaultLatencyTimeout": "Test-Timeout"
       },
@@ -403,8 +434,15 @@
         "update": "Aktualisieren"
       },
       "messages": {
-        "portableError": "Die portable Version unterstützt keine In-App-Aktualisierung. Bitte laden Sie die Dateien manuell herunter und ersetzen Sie sie.",
-        "breakChangeError": "Dies ist eine wichtige Aktualisierung. Die In-App-Aktualisierung wird nicht unterstützt. Bitte deinstallieren Sie die Software und laden Sie die neue Version manuell herunter und installieren Sie sie."
+        "breakChangeError": "Dies ist eine wichtige Aktualisierung. Die In-App-Aktualisierung wird nicht unterstützt. Bitte deinstallieren Sie die Software und laden Sie die neue Version manuell herunter und installieren Sie sie.",
+        "available": "Eine neue Version ist verfügbar"
+      },
+      "alerts": {
+        "note": "Hinweis",
+        "tip": "Tipp",
+        "important": "Wichtig",
+        "warning": "Warnung",
+        "caution": "Achtung"
       }
     },
     "sysproxy": {
@@ -456,13 +494,15 @@
         "autoRedirect": "Automatically configures nftables/iptables TCP redirects"
       },
       "messages": {
-        "applied": "Einstellungen angewendet"
+        "applied": "Einstellungen angewendet",
+        "invalidRouteExcludeAddress": "Bitte geben Sie einen gültigen CIDR-Block ein",
+        "routeExcludeAddressHint": "Es werden nur IPv4-/IPv6-CIDR-Blöcke unterstützt, z. B. 192.168.0.0/16 oder fd00::/8"
       }
     },
     "dns": {
       "dialog": {
         "title": "DNS-Überschreibung",
-        "warning": "Wenn Sie sich nicht mit diesen Einstellungen auskennen, ändern Sie sie nicht und lassen Sie die DNS-Überschreibung aktiviert."
+        "warning": "Wenn Sie sich nicht mit diesen Einstellungen auskennen, ändern Sie sie nicht und lassen Sie die DNS-Überschreibung deaktiviert."
       },
       "sections": {
         "general": "DNS-Einstellungen",
@@ -474,6 +514,7 @@
         "listen": "DNS-Lauschangabe",
         "enhancedMode": "Erweiterter Modus",
         "fakeIpRange": "Fake-IP-Bereich",
+        "fakeIpRange6": "Fake-IP-Bereich (IPv6)",
         "fakeIpFilterMode": "Fake-IP-Filtermodus",
         "ipv6": {
           "label": "IPv6",
@@ -562,6 +603,11 @@
       "messages": {
         "supportedPlaceholders": "Unterstützt %host, %port, %secret",
         "placeholderInstruction": "Verwenden Sie %host, %port, %secret für Host, Port und Zugangsschlüssel"
+      },
+      "errors": {
+        "clashInfoUnavailable": "Verbindungsinformationen des Kerns sind nicht verfügbar",
+        "invalidServer": "Die Kern-Serveradresse „{{server}}“ ist ungültig",
+        "openFailed": "Web-UI konnte nicht geöffnet werden"
       }
     },
     "hotkey": {
@@ -580,11 +626,6 @@
         "reactivateProfiles": "Abonnement erneut aktivieren"
       }
     },
-    "password": {
-      "prompts": {
-        "enterRoot": "Bitte geben Sie Ihr Root-Passwort ein."
-      }
-    },
     "networkInterface": {
       "title": "Netzwerkschnittstelle",
       "fields": {
@@ -594,6 +635,22 @@
     }
   },
   "feedback": {
+    "errors": {
+      "clash": {
+        "configUpdateFailed": "Kernkonfiguration konnte nicht aktualisiert werden",
+        "modeUpdateFailed": "Proxy-Modus konnte nicht geändert werden",
+        "restartFailed": "Kern konnte nicht neu gestartet werden",
+        "startFailed": "Kern konnte nicht gestartet werden",
+        "stopFailed": "Kern konnte nicht gestoppt werden"
+      },
+      "clashService": {
+        "installFailed": "Dienst konnte nicht installiert werden",
+        "uninstallFailed": "Dienst konnte nicht deinstalliert werden",
+        "reinstallFailed": "Dienst konnte nicht neu installiert werden",
+        "repairFailed": "Dienst konnte nicht repariert werden",
+        "sidecarFailed": "Fortsetzung mit Sidecar fehlgeschlagen"
+      }
+    },
     "notifications": {
       "clash": {
         "restartSuccess": "Clash-Kern wurde neu gestartet",
