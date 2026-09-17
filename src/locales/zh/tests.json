@@ -20,6 +20,13 @@
       },
       "fields": {
         "url": "测试地址"
+      },
+      "errors": {
+        "nameRequired": "请输入名称",
+        "urlRequired": "请输入测试链接",
+        "invalidSvg": "图标不是有效的 SVG",
+        "uidMissing": "缺少测试项标识",
+        "saveFailed": "保存测试项失败"
       }
     }
   },
@@ -32,7 +39,7 @@
       "completed": "检测完成",
       "disallowedIsp": "不允许的 ISP",
       "originalsOnly": "仅限原创",
-      "noDisney": "不支持（IP被Disney+禁止）",
+      "noDisney": "不支持（IP 被 Disney+ 禁止）",
       "unsupportedRegion": "不支持的国家/地区",
       "failedNetwork": "测试失败（网络连接问题）"
     }

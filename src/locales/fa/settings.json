@@ -5,6 +5,7 @@
       "telegram": "کانال تلگرام",
       "github": "مخزن GitHub"
     },
+    "actionsGroupLabel": "پیوندهای تنظیمات",
     "title": "تنظیمات"
   },
   "sections": {
@@ -36,11 +37,17 @@
       },
       "actions": {
         "installService": "نصب سرویس",
-        "uninstallService": "حذف سرویس"
+        "uninstallService": "حذف سرویس",
+        "switchToServiceMode": "رفتن به حالت سرویس"
       },
       "fields": {
         "systemProxy": "پراکسی سیستم",
         "tunMode": "Tun (کارت شبکه مجازی)"
+      },
+      "messages": {
+        "installedCheckProxy": "سرویس نصب شد و هسته از طریق آن اجرا می‌شود. کلید پراکسی سیستم را بررسی کنید و اگر تغییر شما اعمال نشده، دوباره انجامش دهید.",
+        "installedCoreNotOnService": "سرویس نصب شد، اما هسته از طریق آن اجرا نمی‌شود. وضعیت هسته را بررسی کنید و دوباره تلاش کنید.",
+        "installedProxyRestored": "سرویس نصب شد، هسته از طریق آن اجرا می‌شود و تغییر پروکسی سیستم شما اعمال شد."
       }
     },
     "externalController": {
@@ -103,7 +110,31 @@
           "webUI": "رابط وب",
           "clashCore": "هسته Clash",
           "openUwpTool": "باز کردن ابزار UWP",
-          "updateGeoData": "به‌روزرسانی GeoData"
+          "updateGeoData": "به‌روزرسانی GeoData",
+          "tunnels": {
+            "title": "مدیریت تونل‌ها",
+            "localAddr": "آدرس شنود محلی",
+            "localPort": "پورت شنود محلی",
+            "targetAddr": "آدرس هدف",
+            "targetPort": "پورت هدف",
+            "proxyGroup": "گروه پراکسی",
+            "proxyNode": "گره پراکسی",
+            "protocols": "پروتکل",
+            "existing": "تونل‌های موجود",
+            "default": "پیروی از تنظیمات فعلی",
+            "optional": "اختیاری",
+            "messages": {
+              "incomplete": "لطفاً تمام فیلدهای الزامی تونل را تکمیل کنید",
+              "invalidLocalAddr": "آدرس شنود محلی نامعتبر است",
+              "invalidLocalPort": "پورت شنود محلی نامعتبر است",
+              "invalidTargetAddr": "آدرس هدف نامعتبر",
+              "invalidTargetPort": "پورت هدف نامعتبر"
+            },
+            "actions": {
+              "add": "افزودن",
+              "addNew": "افزودن تونل جدید"
+            }
+          }
         },
         "tooltips": {
           "networkInterface": "رابط شبکه",
@@ -216,7 +247,8 @@
           "systemProxyTrayIcon": "آیکون سینی پراکسی سیستم",
           "tunTrayIcon": "آیکون سینی Tun",
           "enableTrayIcon": "Enable Tray Icon",
-          "enableTraySpeed": "فعال کردن سرعت ترای"
+          "enableTraySpeed": "فعال کردن سرعت ترای",
+          "pauseRenderTrafficStatsOnBlur": "توقف رندر آمار ترافیک هنگام از دست رفتن فوکوس"
         },
         "tooltips": {
           "hoverNavigator": "Automatically scroll to the corresponding proxy group when hovering over alphabet letters",
@@ -259,7 +291,11 @@
       "messages": {
         "portInUse": "Port {{port}} is already in use",
         "saved": "Port settings saved",
-        "saveFailed": "Failed to save port settings"
+        "saveFailed": "Failed to save port settings",
+        "automaticFallback": "پورت {{oldPort}} در حال استفاده بود، بنابراین این اجرا از {{newPort}} استفاده می‌کند. تنظیم شما تغییر نکرده و در اجرای بعدی {{oldPort}} دوباره امتحان می‌شود.",
+        "automaticFallbackFailed": "تغییر خودکار پورت پراکسی ترکیبی ناموفق بود: {{error}}",
+        "portTooLow": "پورت باید ۱۰۰۰ یا بیشتر باشد",
+        "portTooHigh": "پورت باید ۶۵۵۳۵ یا کمتر باشد"
       }
     },
     "clashCore": {
@@ -335,7 +371,7 @@
         "scheduleHelper": "Create local backups in the background at the configured interval.",
         "intervalLabel": "Backup frequency",
         "changeLabel": "Backup on critical changes",
-        "changeHelper": "Automatically back up when the global extend config/script or subscriptions are added, removed, or edited.",
+        "changeHelper": "Automatically backup when Global Extend Config/Script changes.",
         "options": {
           "hours": "Every {{n}} hours",
           "days": "Every {{n}} days"
@@ -377,6 +413,7 @@
         "proxyLayoutColumns": "ستون چیدمان پراکسی",
         "autoLogClean": "پاکسازی خودکار لاگ",
         "autoDelayDetection": "تشخیص تأخیر خودکار",
+        "autoDelayDetectionInterval": "فاصله تشخیص تأخیر خودکار",
         "defaultLatencyTest": "آزمون تأخیر پیش‌فرض",
         "defaultLatencyTimeout": "زمان انتظار تأخیر پیش‌فرض"
       },
@@ -403,8 +440,15 @@
         "update": "به‌روزرسانی"
       },
       "messages": {
-        "portableError": "نسخه پرتابل از به‌روزرسانی درون برنامه‌ای پشتیبانی نمی‌کند. لطفاً به صورت دستی دانلود و جایگزین کنید",
-        "breakChangeError": "این نسخه یک به‌روزرسانی اساسی است و پشتیبانی از به‌روزرسانی درون برنامه را پشتیبانی نمی‌کند. لطفاً پس از حذف، دستی دانلود و نصب کنید."
+        "breakChangeError": "این نسخه یک به‌روزرسانی اساسی است و پشتیبانی از به‌روزرسانی درون برنامه را پشتیبانی نمی‌کند. لطفاً پس از حذف، دستی دانلود و نصب کنید.",
+        "available": "نسخه جدیدی در دسترس است"
+      },
+      "alerts": {
+        "note": "یادداشت",
+        "tip": "نکته",
+        "important": "مهم",
+        "warning": "هشدار",
+        "caution": "احتیاط"
       }
     },
     "sysproxy": {
@@ -456,13 +500,22 @@
         "autoRedirect": "پیکربندی خودکار ریدایرکت‌های TCP در nftables/iptables"
       },
       "messages": {
-        "applied": "تنظیمات اعمال شد"
+        "applied": "تنظیمات اعمال شد",
+        "invalidRouteExcludeAddress": "لطفاً یک محدوده CIDR معتبر وارد کنید",
+        "routeExcludeAddressHint": "فقط CIDRهای IPv4/IPv6 پشتیبانی می‌شوند، مانند 192.168.0.0/16 یا fd00::/8"
       }
     },
     "dns": {
       "dialog": {
         "title": "بازنویسی DNS",
-        "warning": "اگر با این تنظیمات آشنا نیستید، لطفاً آنها را تغییر ندهید و DNS Overwrite را فعال نگه دارید."
+        "warning": "اگر با این تنظیمات آشنا نیستید، لطفاً آنها را تغییر ندهید و DNS Overwrite را غیرفعال نگه دارید."
+      },
+      "protection": {
+        "title": "Enable DNS Overwrite?",
+        "message": "This subscription contains custom DNS settings. DNS Overwrite may replace them, preventing nodes from connecting or some websites from loading. Enable it anyway?",
+        "enableAnyway": "Enable anyway",
+        "keepDisabled": "Keep disabled",
+        "autoDisabled": "DNS Overwrite was disabled to preserve the custom DNS settings in the current subscription."
       },
       "sections": {
         "general": "تنظیمات DNS",
@@ -474,6 +527,7 @@
         "listen": "DNS Listen",
         "enhancedMode": "Enhanced Mode",
         "fakeIpRange": "Fake IP Range",
+        "fakeIpRange6": "Fake IP Range (IPv6)",
         "fakeIpFilterMode": "Fake IP Filter Mode",
         "ipv6": {
           "label": "IPv6",
@@ -562,6 +616,11 @@
       "messages": {
         "supportedPlaceholders": "پشتیبانی از %host، %port و %secret",
         "placeholderInstruction": "جایگزین کردن میزبان، پورت و رمز با %host، %port، %secret"
+      },
+      "errors": {
+        "clashInfoUnavailable": "اطلاعات اتصال هسته در دسترس نیست",
+        "invalidServer": "نشانی سرور هسته «{{server}}» نامعتبر است",
+        "openFailed": "باز کردن رابط وب ناموفق بود"
       }
     },
     "hotkey": {
@@ -580,11 +639,6 @@
         "reactivateProfiles": "فعال‌سازی مجدد پروفایل‌ها"
       }
     },
-    "password": {
-      "prompts": {
-        "enterRoot": "لطفاً رمز ریشه خود را وارد کنید"
-      }
-    },
     "networkInterface": {
       "title": "رابط شبکه",
       "fields": {
@@ -594,6 +648,30 @@
     }
   },
   "feedback": {
+    "errors": {
+      "clash": {
+        "configUpdateFailed": "به‌روزرسانی پیکربندی هسته ناموفق بود",
+        "modeUpdateFailed": "تغییر حالت پروکسی ناموفق بود",
+        "restartFailed": "راه‌اندازی مجدد هسته ناموفق بود",
+        "startFailed": "راه‌اندازی هسته ناموفق بود",
+        "stopFailed": "توقف هسته ناموفق بود"
+      },
+      "clashService": {
+        "installFailed": "نصب سرویس ناموفق بود",
+        "uninstallFailed": "حذف سرویس ناموفق بود",
+        "reinstallFailed": "نصب مجدد سرویس ناموفق بود",
+        "repairFailed": "تعمیر سرویس ناموفق بود",
+        "sidecarFailed": "ادامه با Sidecar ناموفق بود"
+      },
+      "sysproxy": {
+        "privilegeRequired": "تنظیم پراکسی سیستم ممکن نیست: macOS به دلیل نداشتن دسترسی، این تغییر را رد کرد. سرویس Clash Verge را نصب کنید؛ اگر مدیر هستید می‌توانید در گزینه‌های پیشرفتهٔ تنظیمات سیستم ← حریم خصوصی و امنیت، الزام رمز مدیر برای تنظیمات سراسری سیستم را نیز خاموش کنید.",
+        "directFallback": "تنظیم پراکسی سیستم ناموفق بود؛ ترافیک به اتصال مستقیم بازگردانده شد.",
+        "guardStopped": "نگهبان پراکسی سیستم پس از چند شکست پیاپی متوقف شد. پراکسی سیستم دیگر به‌طور خودکار نگه داشته نمی‌شود.",
+        "sidecarWhileServiceReady": "تنظیم پراکسی سیستم ممکن نشد: سرویس Clash Verge آماده است اما هسته هنوز به‌صورت Sidecar اجرا می‌شود. برای رفتن به حالت سرویس، هسته را دوباره راه‌اندازی کنید.",
+        "coreNotReady": "فعال‌سازی پراکسی سیستم ممکن نشد: هسته در حال اجرا نیست. ابتدا هسته را اجرا کنید (یا سرویس Clash Verge را نصب/تعمیر کنید) و دوباره تلاش کنید.",
+        "systemCallFailed": "نوشتن پراکسی سیستم ناموفق بود: یک فراخوانی سیستمی ویندوز شکست خورد. این معمولاً گذراست؛ دوباره تلاش کنید."
+      }
+    },
     "notifications": {
       "clash": {
         "restartSuccess": "هسته Clash مجدداً راه‌اندازی شد",
@@ -605,6 +683,7 @@
       },
       "clashService": {
         "installSuccess": "سرویس با موفقیت نصب شد",
+        "sidecarFallback": "سرویس به‌دلیل مجوزهای مسیر نتوانست هسته را اجرا کند. برای ادامهٔ اجرا به حالت مدیر تغییر یافت.",
         "uninstallSuccess": "سرویس با موفقیت حذف نصب شد"
       },
       "updater": {

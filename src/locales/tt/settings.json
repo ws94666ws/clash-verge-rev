@@ -5,6 +5,7 @@
       "telegram": "Telegram каналы",
       "github": "GitHub репозиториясе"
     },
+    "actionsGroupLabel": "Көйләү сылтамалары",
     "title": "Көйләүләр"
   },
   "sections": {
@@ -36,11 +37,17 @@
       },
       "actions": {
         "installService": "Хезмәтне урнаштыру",
-        "uninstallService": "Uninstall Service"
+        "uninstallService": "Uninstall Service",
+        "switchToServiceMode": "Хезмәт режимына күчү"
       },
       "fields": {
         "systemProxy": "Системалы прокси",
         "tunMode": "Tun режимы (виртуаль челтәр адаптеры)"
+      },
+      "messages": {
+        "installedCheckProxy": "Хезмәт урнаштырылды, ядро хезмәт аша эшли. Система проксие тоткычын тикшерегез; үзгәреш эшләмәгән булса, кабатлагыз.",
+        "installedCoreNotOnService": "Хезмәт урнаштырылды, әмма ядро хезмәт аша эшләми. Ядро халәтен тикшереп кабат карагыз.",
+        "installedProxyRestored": "Хезмәт урнаштырылды, үзәк аның аша эшли, һәм система прокси үзгәрешегез кулланылды."
       }
     },
     "externalController": {
@@ -103,7 +110,31 @@
           "webUI": "Веб-интерфейс",
           "clashCore": "Clash ядросы",
           "openUwpTool": "UWP инструментын ачу",
-          "updateGeoData": "GeoData яңарту"
+          "updateGeoData": "GeoData яңарту",
+          "tunnels": {
+            "title": "Tunnel İdäräse",
+            "localAddr": "Urınçı Adres",
+            "localPort": "Urınçı Port",
+            "targetAddr": "Максат адресы",
+            "targetPort": "Максат порты",
+            "proxyGroup": "Proxy Törkeme",
+            "proxyNode": "Proxy Töyene",
+            "protocols": "Protokollar",
+            "existing": "Bar Tunnel'lär",
+            "default": "Xäzerge Köyläwlärgä iärü",
+            "optional": "Mäcbüri tügel",
+            "messages": {
+              "incomplete": "Böten tunnel mäğlümatların tutırıgız",
+              "invalidLocalAddr": "Döres tügel urınçı adres",
+              "invalidLocalPort": "Döres tügel urınçı port",
+              "invalidTargetAddr": "Дөрес түгел максат адресы",
+              "invalidTargetPort": "Дөрес түгел максат порты"
+            },
+            "actions": {
+              "add": "Östäw",
+              "addNew": "Yaña Tunnel Östäw"
+            }
+          }
         },
         "tooltips": {
           "networkInterface": "Челтәр интерфейсы",
@@ -216,7 +247,8 @@
           "systemProxyTrayIcon": "Системалы прокси иконкасы",
           "tunTrayIcon": "Tun (виртуаль адаптер) иконкасы",
           "enableTrayIcon": "Enable Tray Icon",
-          "enableTraySpeed": "Трей скоростьне үстерү"
+          "enableTraySpeed": "Трей скоростьне үстерү",
+          "pauseRenderTrafficStatsOnBlur": "Фокус югалганда трафик статистикасын сызуны туктатып тору"
         },
         "tooltips": {
           "hoverNavigator": "Automatically scroll to the corresponding proxy group when hovering over alphabet letters",
@@ -259,7 +291,11 @@
       "messages": {
         "portInUse": "Port {{port}} is already in use",
         "saved": "Port settings saved",
-        "saveFailed": "Failed to save port settings"
+        "saveFailed": "Failed to save port settings",
+        "automaticFallback": "Port {{oldPort}} was in use, so this session runs on {{newPort}}. Your setting is unchanged and {{oldPort}} is retried on the next start.",
+        "automaticFallbackFailed": "Automatic mixed proxy port fallback failed: {{error}}",
+        "portTooLow": "Порт 1000 дән ким булмаска тиеш",
+        "portTooHigh": "Порт 65535 тән артмаска тиеш"
       }
     },
     "clashCore": {
@@ -335,7 +371,7 @@
         "scheduleHelper": "Create local backups in the background at the configured interval.",
         "intervalLabel": "Backup frequency",
         "changeLabel": "Backup on critical changes",
-        "changeHelper": "Automatically back up when the global extend config/script or subscriptions are added, removed, or edited.",
+        "changeHelper": "Automatically backup when Global Extend Config/Script changes.",
         "options": {
           "hours": "Every {{n}} hours",
           "days": "Every {{n}} days"
@@ -377,6 +413,7 @@
         "proxyLayoutColumns": "Прокси күрсәтү баганалары саны",
         "autoLogClean": "Логларны автоматик чистарту",
         "autoDelayDetection": "Автоматик тоткарлык ачыклау",
+        "autoDelayDetectionInterval": "Автоматик тоткарлык ачыклау интервалы",
         "defaultLatencyTest": "Тоткарлануны тикшерү сылтамасы (defaults)",
         "defaultLatencyTimeout": "Тоткарлануның стандарт таймауты"
       },
@@ -403,8 +440,15 @@
         "update": "Яңарту"
       },
       "messages": {
-        "portableError": "Портатив версиядә кушымта эчендә яңарту хупланмый, кулдан төшереп алыгыз",
-        "breakChangeError": "Бу зур яңарту, ул кушымта эчендә яңартылмый. Борып алып ташлап, яңадан урнаштыру сорала."
+        "breakChangeError": "Бу зур яңарту, ул кушымта эчендә яңартылмый. Борып алып ташлап, яңадан урнаштыру сорала.",
+        "available": "Яңа версия бар"
+      },
+      "alerts": {
+        "note": "Искәрмә",
+        "tip": "Киңәш",
+        "important": "Мөһим",
+        "warning": "Кисәтү",
+        "caution": "Игътибар"
       }
     },
     "sysproxy": {
@@ -456,13 +500,22 @@
         "autoRedirect": "Automatically configures nftables/iptables TCP redirects"
       },
       "messages": {
-        "applied": "Көйләүләр кулланылды"
+        "applied": "Көйләүләр кулланылды",
+        "invalidRouteExcludeAddress": "Дөрес CIDR блогын кертегез",
+        "routeExcludeAddressHint": "IPv4/IPv6 CIDR блоклары гына хуплана, мәсәлән 192.168.0.0/16 яки fd00::/8"
       }
     },
     "dns": {
       "dialog": {
         "title": "DNS Overwrite",
-        "warning": "If you are not familiar with these settings, please do not modify them and keep DNS Overwrite enabled"
+        "warning": "If you are not familiar with these settings, please do not modify them and keep DNS Overwrite disabled"
+      },
+      "protection": {
+        "title": "Enable DNS Overwrite?",
+        "message": "This subscription contains custom DNS settings. DNS Overwrite may replace them, preventing nodes from connecting or some websites from loading. Enable it anyway?",
+        "enableAnyway": "Enable anyway",
+        "keepDisabled": "Keep disabled",
+        "autoDisabled": "DNS Overwrite was disabled to preserve the custom DNS settings in the current subscription."
       },
       "sections": {
         "general": "DNS Settings",
@@ -474,6 +527,7 @@
         "listen": "DNS Listen",
         "enhancedMode": "Enhanced Mode",
         "fakeIpRange": "Fake IP Range",
+        "fakeIpRange6": "Fake IP Range (IPv6)",
         "fakeIpFilterMode": "Fake IP Filter Mode",
         "ipv6": {
           "label": "IPv6",
@@ -562,6 +616,11 @@
       "messages": {
         "supportedPlaceholders": "%host, %port, %secret макросларын хуплау",
         "placeholderInstruction": "Хост, порт, серсүзне %host, %port, %secret белән алмаштырыгыз"
+      },
+      "errors": {
+        "clashInfoUnavailable": "Ядро тоташу мәгълүматы юк",
+        "invalidServer": "Ядро сервер адресы «{{server}}» дөрес түгел",
+        "openFailed": "Web UI ачып булмады"
       }
     },
     "hotkey": {
@@ -580,11 +639,6 @@
         "reactivateProfiles": "Профильләрне янәдән активлаштыру"
       }
     },
-    "password": {
-      "prompts": {
-        "enterRoot": "root паролен языгыз"
-      }
-    },
     "networkInterface": {
       "title": "Челтәр интерфейсы",
       "fields": {
@@ -594,6 +648,30 @@
     }
   },
   "feedback": {
+    "errors": {
+      "clash": {
+        "configUpdateFailed": "Ядро көйләүләрен яңартып булмады",
+        "modeUpdateFailed": "Прокси режимын үзгәртеп булмады",
+        "restartFailed": "Ядрону яңадан башлап булмады",
+        "startFailed": "Ядрону башлап булмады",
+        "stopFailed": "Ядрону туктатып булмады"
+      },
+      "clashService": {
+        "installFailed": "Хезмәтне урнаштырып булмады",
+        "uninstallFailed": "Хезмәтне бетереп булмады",
+        "reinstallFailed": "Хезмәтне яңадан урнаштырып булмады",
+        "repairFailed": "Хезмәтне төзәтеп булмады",
+        "sidecarFailed": "Sidecar белән дәвам итеп булмады"
+      },
+      "sysproxy": {
+        "privilegeRequired": "Система проксиен көйләп булмый: хокуклар җитмәгәнгә күрә macOS бу үзгәрешне кире какты. Clash Verge хезмәтен урнаштырыгыз; әгәр сез администратор булсагыз, Система көйләнмәләре → Шәхсилек вә иминлек бүлегенең өстәмә параметрларында, система дәрәҗәсендәге көйләнмәләр өчен администратор паролен таләп итүне сүндерә аласыз.",
+        "directFallback": "Система проксиен көйләү уңышсыз булды; трафик туры тоташуга кайтарылды.",
+        "guardStopped": "Система проксие сакчысы берничә тапкыр рәттән уңышсыз булганнан соң туктады. Система проксие бүтән автоматик рәвештә саклап торылмый.",
+        "sidecarWhileServiceReady": "Система проксиен көйләп булмады: Clash Verge хезмәте әзер, әмма ядро һаман Sidecar буларак эшли. Хезмәт режимына күчәр өчен ядрону яңадан эшләтегез.",
+        "coreNotReady": "Система проксиен кабызып булмады: ядро эшләми. Ядрону җибәрегез (яки Clash Verge хезмәтен урнаштырыгыз/төзәтегез) һәм тагын бер тапкыр карагыз.",
+        "systemCallFailed": "Система проксиен язып булмады: Windows система чакыруы уңышсыз тәмамланды. Гадәттә бу вакытлыча, тагын бер тапкыр карагыз."
+      }
+    },
     "notifications": {
       "clash": {
         "restartSuccess": "Clash ядросы яңадан башланды",
@@ -605,6 +683,7 @@
       },
       "clashService": {
         "installSuccess": "Сервис уңышлы урнаштырылды",
+        "sidecarFallback": "Хезмәт юлга керү хокуклары аркасында төшне эшләтеп җибәрә алмады. Эшне дәвам итү өчен администратор режимына күчелде.",
         "uninstallSuccess": "Сервис уңышлы салдырылды"
       },
       "updater": {
