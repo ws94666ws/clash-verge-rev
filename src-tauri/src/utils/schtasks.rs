@@ -1,12 +1,11 @@
 use crate::utils::dirs::{self, PathBufExec as _};
-use anyhow::{Result, anyhow};
+use anyhow::{Context as _, Result, anyhow};
 use clash_verge_logging::{Type, logging};
 use std::fs;
 use std::os::windows::process::CommandExt as _;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use winapi::um::stringapiset::MultiByteToWideChar;
-use winapi::um::winnls::{GetACP, GetOEMCP};
+use windows::Win32::Globalization::{GetACP, GetOEMCP, MULTI_BYTE_TO_WIDE_CHAR_FLAGS, MultiByteToWideChar};
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 const TASK_NAME_USER: &str = "Clash Verge";
@@ -101,8 +100,14 @@ async fn cleanup_legacy_shortcuts() -> Result<()> {
     let old_shortcut = startup_dir.join("Clash-Verge.lnk");
     let new_shortcut = startup_dir.join("Clash Verge.lnk");
 
-    old_shortcut.remove_if_exists().await?;
-    new_shortcut.remove_if_exists().await?;
+    old_shortcut
+        .remove_if_exists()
+        .await
+        .with_context(|| format!("failed to remove startup shortcut {}", old_shortcut.display()))?;
+    new_shortcut
+        .remove_if_exists()
+        .await
+        .with_context(|| format!("failed to remove startup shortcut {}", new_shortcut.display()))?;
     Ok(())
 }
 
@@ -207,34 +212,16 @@ fn decode_with_code_page(bytes: &[u8], code_page: u32) -> Option<String> {
         return None;
     }
 
-    let required = unsafe {
-        MultiByteToWideChar(
-            code_page,
-            0,
-            bytes.as_ptr() as *const i8,
-            len as i32,
-            std::ptr::null_mut(),
-            0,
-        )
-    };
+    let required = unsafe { MultiByteToWideChar(code_page, MULTI_BYTE_TO_WIDE_CHAR_FLAGS(0), bytes, None) };
 
-    if required == 0 {
+    if required <= 0 {
         return None;
     }
 
     let mut wide = vec![0u16; required as usize];
-    let written = unsafe {
-        MultiByteToWideChar(
-            code_page,
-            0,
-            bytes.as_ptr() as *const i8,
-            len as i32,
-            wide.as_mut_ptr(),
-            required,
-        )
-    };
+    let written = unsafe { MultiByteToWideChar(code_page, MULTI_BYTE_TO_WIDE_CHAR_FLAGS(0), bytes, Some(&mut wide)) };
 
-    if written == 0 {
+    if written <= 0 {
         return None;
     }
 
@@ -346,7 +333,7 @@ pub async fn set_auto_launch(is_enable: bool, is_admin: bool) -> Result<()> {
     let other = if is_admin { TaskMode::User } else { TaskMode::Admin };
 
     if let Err(err) = cleanup_legacy_shortcuts().await {
-        logging!(warn, Type::Setup, "Failed to cleanup legacy startup shortcuts: {}", err);
+        logging!(warn, Type::Setup, "Failed to cleanup legacy startup shortcuts: {err:#}");
     }
 
     if is_enable {
@@ -391,12 +378,4 @@ pub async fn set_auto_launch(is_enable: bool, is_admin: bool) -> Result<()> {
     }
 
     Ok(())
-}
-
-pub fn is_auto_launch_enabled() -> Result<bool> {
-    if is_task_enabled(TaskMode::Admin)? {
-        return Ok(true);
-    }
-
-    is_task_enabled(TaskMode::User)
 }
