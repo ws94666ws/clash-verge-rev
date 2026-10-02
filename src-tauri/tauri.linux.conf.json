@@ -15,18 +15,19 @@
       },
       "rpm": {
         "depends": ["openssl", "libayatana-appindicator-gtk3"],
+        "recommends": ["policycoreutils", "policycoreutils-python-utils"],
         "desktopTemplate": "./packages/linux/clash-verge.desktop",
         "provides": ["clash-verge"],
         "conflicts": ["clash-verge"],
         "obsoletes": ["clash-verge"],
-        "postInstallScript": "./packages/linux/post-install.sh",
+        "postInstallScript": "./packages/linux/post-install-rpm.sh",
         "preRemoveScript": "./packages/linux/pre-remove.sh"
       }
     },
     "externalBin": [
-      "./resources/clash-verge-service",
-      "./resources/clash-verge-service-install",
-      "./resources/clash-verge-service-uninstall",
+      "./sidecar/clash-verge-service",
+      "./sidecar/clash-verge-service-install",
+      "./sidecar/clash-verge-service-uninstall",
       "./sidecar/verge-mihomo",
       "./sidecar/verge-mihomo-alpha"
     ]

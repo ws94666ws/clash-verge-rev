@@ -5,6 +5,7 @@
       "telegram": "Telegram Channel",
       "github": "Github Repo"
     },
+    "actionsGroupLabel": "Settings links",
     "title": "Settings"
   },
   "sections": {
@@ -36,11 +37,17 @@
       },
       "actions": {
         "installService": "Install Service",
-        "uninstallService": "Uninstall Service"
+        "uninstallService": "Uninstall Service",
+        "switchToServiceMode": "Switch to service mode"
       },
       "fields": {
         "systemProxy": "System Proxy",
         "tunMode": "Tun Mode"
+      },
+      "messages": {
+        "installedCheckProxy": "The service is installed and the core is running through it. Check the system proxy switch and make your change again if it did not take.",
+        "installedCoreNotOnService": "The service is installed, but the core is not running through it. Check the core and try again.",
+        "installedProxyRestored": "The service is installed, the core is running through it, and your system proxy change has been applied."
       }
     },
     "externalController": {
@@ -103,7 +110,31 @@
           "webUI": "Web UI",
           "clashCore": "Clash Core",
           "openUwpTool": "Open UWP tool",
-          "updateGeoData": "Update GeoData"
+          "updateGeoData": "Update GeoData",
+          "tunnels": {
+            "title": "Tunnel Management",
+            "localAddr": "Local Listen Address",
+            "localPort": "Local Listen Port",
+            "targetAddr": "Target Address",
+            "targetPort": "Target Port",
+            "proxyGroup": "Proxy Group",
+            "proxyNode": "Proxy Node",
+            "protocols": "Protocol",
+            "existing": "Existing Tunnels",
+            "default": "Follow Current Configuration",
+            "optional": "Optional",
+            "messages": {
+              "incomplete": "Please fill in all required tunnel fields",
+              "invalidLocalAddr": "Invalid local listen address",
+              "invalidLocalPort": "Invalid local listen port",
+              "invalidTargetAddr": "Invalid Target Address",
+              "invalidTargetPort": "Invalid Target Port"
+            },
+            "actions": {
+              "add": "Add",
+              "addNew": "Add New Tunnel"
+            }
+          }
         },
         "tooltips": {
           "networkInterface": "Network Interface",
@@ -216,7 +247,8 @@
           "systemProxyTrayIcon": "System Proxy Tray Icon",
           "tunTrayIcon": "Tun Tray Icon",
           "enableTrayIcon": "Enable Tray Icon",
-          "enableTraySpeed": "Enable Tray Speed"
+          "enableTraySpeed": "Enable Tray Speed",
+          "pauseRenderTrafficStatsOnBlur": "Pause rendering traffic statistics when blurred"
         },
         "tooltips": {
           "hoverNavigator": "Automatically scroll to the corresponding proxy group when hovering over alphabet letters",
@@ -259,7 +291,11 @@
       "messages": {
         "portInUse": "Port {{port}} is already in use",
         "saved": "Port settings saved",
-        "saveFailed": "Failed to save port settings"
+        "saveFailed": "Failed to save port settings",
+        "automaticFallback": "Port {{oldPort}} was in use, so this session runs on {{newPort}}. Your setting is unchanged and {{oldPort}} is retried on the next start.",
+        "automaticFallbackFailed": "Automatic mixed proxy port fallback failed: {{error}}",
+        "portTooLow": "The port must be 1000 or higher",
+        "portTooHigh": "The port must be 65535 or lower"
       }
     },
     "clashCore": {
@@ -335,7 +371,7 @@
         "scheduleHelper": "Create local backups in the background at the configured interval.",
         "intervalLabel": "Backup frequency",
         "changeLabel": "Backup on critical changes",
-        "changeHelper": "Automatically back up when the global extend config/script or subscriptions are added, removed, or edited.",
+        "changeHelper": "Automatically backup when Global Extend Config/Script changes.",
         "options": {
           "hours": "Every {{n}} hours",
           "days": "Every {{n}} days"
@@ -377,6 +413,7 @@
         "proxyLayoutColumns": "Proxy Layout Columns",
         "autoLogClean": "Auto Log Clean",
         "autoDelayDetection": "Auto Delay Detection",
+        "autoDelayDetectionInterval": "Auto Delay Detection Interval",
         "defaultLatencyTest": "Default Latency Test",
         "defaultLatencyTimeout": "Default Latency Timeout"
       },
@@ -403,8 +440,15 @@
         "update": "Update"
       },
       "messages": {
-        "portableError": "The portable version does not support in-app updates. Please manually download and replace it",
-        "breakChangeError": "This version is a major update and does not support in-app updates. Please uninstall it and manually download and install the new version"
+        "breakChangeError": "This version is a major update and does not support in-app updates. Please uninstall it and manually download and install the new version",
+        "available": "A new version is available"
+      },
+      "alerts": {
+        "note": "Note",
+        "tip": "Tip",
+        "important": "Important",
+        "warning": "Warning",
+        "caution": "Caution"
       }
     },
     "sysproxy": {
@@ -456,13 +500,23 @@
         "autoRedirect": "Automatically configures nftables/iptables TCP redirects"
       },
       "messages": {
-        "applied": "Settings Applied"
+        "applied": "Settings Applied",
+        "invalidRouteExcludeAddress": "Please enter a valid CIDR block",
+        "routeExcludeAddressHint": "Only IPv4/IPv6 CIDR is supported, such as 192.168.0.0/16 or fd00::/8"
       }
     },
     "dns": {
       "dialog": {
         "title": "DNS Overwrite",
-        "warning": "If you are not familiar with these settings, please do not modify them and keep DNS Overwrite enabled"
+        "profileScope": "The DNS override switch is saved separately for each profile and applies only to that profile.",
+        "warning": "If you are not familiar with these settings, please do not modify them and keep DNS Overwrite disabled"
+      },
+      "protection": {
+        "title": "Enable DNS Overwrite?",
+        "message": "This subscription contains custom DNS settings. DNS Overwrite may replace them, preventing nodes from connecting or some websites from loading. Enable it anyway?",
+        "enableAnyway": "Enable anyway",
+        "keepDisabled": "Keep disabled",
+        "autoDisabled": "DNS Overwrite was disabled to preserve the custom DNS settings in the current subscription."
       },
       "sections": {
         "general": "DNS Settings",
@@ -474,6 +528,7 @@
         "listen": "DNS Listen",
         "enhancedMode": "Enhanced Mode",
         "fakeIpRange": "Fake IP Range",
+        "fakeIpRange6": "Fake IP Range (IPv6)",
         "fakeIpFilterMode": "Fake IP Filter Mode",
         "ipv6": {
           "label": "IPv6",
@@ -562,6 +617,11 @@
       "messages": {
         "supportedPlaceholders": "Support %host, %port, %secret",
         "placeholderInstruction": "Replace host, port, secret with %host, %port, %secret"
+      },
+      "errors": {
+        "clashInfoUnavailable": "Core connection information is unavailable",
+        "invalidServer": "The core server address \"{{server}}\" is invalid",
+        "openFailed": "Failed to open Web UI"
       }
     },
     "hotkey": {
@@ -580,11 +640,6 @@
         "reactivateProfiles": "Reactivate Profiles"
       }
     },
-    "password": {
-      "prompts": {
-        "enterRoot": "Please enter your root password"
-      }
-    },
     "networkInterface": {
       "title": "Network Interface",
       "fields": {
@@ -594,6 +649,31 @@
     }
   },
   "feedback": {
+    "errors": {
+      "clash": {
+        "configUpdateFailed": "Failed to update core configuration",
+        "modeUpdateFailed": "Failed to change proxy mode",
+        "restartFailed": "Failed to restart the core",
+        "startFailed": "Failed to start the core",
+        "serviceCoreStopped": "The service's core stopped unexpectedly",
+        "stopFailed": "Failed to stop the core"
+      },
+      "clashService": {
+        "installFailed": "Failed to install the service",
+        "uninstallFailed": "Failed to uninstall the service",
+        "reinstallFailed": "Failed to reinstall the service",
+        "repairFailed": "Failed to repair the service",
+        "sidecarFailed": "Failed to continue with Sidecar"
+      },
+      "sysproxy": {
+        "privilegeRequired": "Cannot set the system proxy: macOS refused the change for lack of privileges. Install the Clash Verge service; an administrator can also turn off the administrator-password requirement for system-wide settings, in the advanced options of System Settings → Privacy & Security.",
+        "directFallback": "Failed to set the system proxy; traffic has been switched back to a direct connection.",
+        "guardStopped": "The system proxy guard stopped after failing several times running. The system proxy is no longer being kept in place.",
+        "sidecarWhileServiceReady": "The system proxy could not be set because the core is still running as a Sidecar, although the Clash Verge service is ready. Restart the core to switch to service mode.",
+        "coreNotReady": "The system proxy could not be enabled because the core is not running. Start the core (or install/repair the Clash Verge service) and try again.",
+        "systemCallFailed": "The system proxy could not be written because a Windows system call failed. This is usually transient, so try again."
+      }
+    },
     "notifications": {
       "clash": {
         "restartSuccess": "Clash Core Restarted",
@@ -604,7 +684,13 @@
         "geoDataUpdated": "GeoData Updated"
       },
       "clashService": {
+        "appDataNotOwned": "The service refused to start the core because, on disk, the app data folder is not owned by your account (common when the home folder is on an external drive). Repairing the service will not fix this. Run this command in a terminal, then restart the app:",
         "installSuccess": "Service Installed Successfully",
+        "permissionFallback": "{{reason}} Switched to normal mode (Sidecar); TUN requires administrator privileges. Follow the guide to fix and reinstall the service. If you prefer not to fix it or do not know how, run the app as administrator without installing the service.",
+        "permissionWritableReason": "Ordinary accounts can modify the core files or a parent folder, so the service refused to run the core with elevated privileges.",
+        "permissionRejectedReason": "The service could not confirm that the core files and folders are safe to run with elevated privileges.",
+        "permissionRepairGuide": "View repair instructions",
+        "sidecarFallback": "The service could not start the core. Switched to Sidecar mode; the service remains unavailable.",
         "uninstallSuccess": "Service Uninstalled Successfully"
       },
       "updater": {

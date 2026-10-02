@@ -1,140 +1,175 @@
-import { useLockFn } from "ahooks";
-import { useCallback, useMemo } from "react";
+import { useCallback, useRef } from 'react'
 import {
   closeConnection,
   getConnections,
   selectNodeForGroup,
-} from "tauri-plugin-mihomo-api";
+  unfixedProxy,
+} from 'tauri-plugin-mihomo-api'
 
-import { useProfiles } from "@/hooks/use-profiles";
-import { useVerge } from "@/hooks/use-verge";
-import { syncTrayProxySelection } from "@/services/cmds";
-import { debugLog } from "@/utils/debug";
+import {
+  useForgetSelection,
+  useRecordSelection,
+} from '@/hooks/use-record-selection'
+import { useVerge } from '@/hooks/use-verge'
+import { syncTrayProxySelection } from '@/services/cmds'
+import { debugLog } from '@/utils/debug'
 
 // 缓存连接清理
 const cleanupConnections = async (previousProxy: string) => {
   try {
-    const { connections } = await getConnections();
+    const { connections } = await getConnections()
     const cleanupPromises = (connections ?? [])
       .filter((conn) => conn.chains.includes(previousProxy))
-      .map((conn) => closeConnection(conn.id));
+      .map((conn) => closeConnection(conn.id))
 
     if (cleanupPromises.length > 0) {
-      await Promise.allSettled(cleanupPromises);
-      debugLog(`[ProxySelection] 清理了 ${cleanupPromises.length} 个连接`);
+      await Promise.allSettled(cleanupPromises)
+      debugLog(`[ProxySelection] 清理了 ${cleanupPromises.length} 个连接`)
     }
   } catch (error) {
-    console.warn("[ProxySelection] 连接清理失败:", error);
+    console.warn('[ProxySelection] 连接清理失败:', error)
   }
-};
+}
 
 interface ProxySelectionOptions {
-  onSuccess?: () => void;
-  onError?: (error: any) => void;
-  enableConnectionCleanup?: boolean;
+  onSuccess?: () => void
+  onError?: (error: any) => void
+  enableConnectionCleanup?: boolean
+}
+
+interface ProxyChangeRequest {
+  groupName: string
+  proxyName: string
+  previousProxy?: string
+  fixed?: string
 }
 
 // 代理选择 Hook
 export const useProxySelection = (options: ProxySelectionOptions = {}) => {
-  const { current, patchCurrent } = useProfiles();
-  const { verge } = useVerge();
+  const recordSelection = useRecordSelection()
+  const forgetSelection = useForgetSelection()
+  const { verge } = useVerge()
+  const pendingRequestRef = useRef<ProxyChangeRequest | null>(null)
+  const isProcessingRef = useRef(false)
 
-  const { onSuccess, onError, enableConnectionCleanup = true } = options;
+  const { onSuccess, onError, enableConnectionCleanup = true } = options
 
-  // 缓存
-  const config = useMemo(
-    () => ({
-      autoCloseConnection: verge?.auto_close_connection ?? false,
-      enableConnectionCleanup,
-    }),
-    [verge?.auto_close_connection, enableConnectionCleanup],
-  );
+  const autoCloseConnection = verge?.auto_close_connection ?? false
 
   // 切换节点
-  const changeProxy = useLockFn(
-    async (
-      groupName: string,
-      proxyName: string,
-      previousProxy?: string,
-      skipConfigSave: boolean = false,
-    ) => {
-      debugLog(`[ProxySelection] 代理切换: ${groupName} -> ${proxyName}`);
+  const syncTraySelection = useCallback(() => {
+    syncTrayProxySelection().catch((error) => {
+      console.error('[ProxySelection] 托盘状态同步失败:', error)
+    })
+  }, [])
+
+  const executeChange = useCallback(
+    async (request: ProxyChangeRequest) => {
+      const { groupName, proxyName, previousProxy, fixed } = request
+      const isFixedProxy = fixed === proxyName
+      if (isFixedProxy) {
+        debugLog(`[ProxySelection] 代理取消固定: ${groupName} -> ${proxyName}`)
+      } else {
+        debugLog(`[ProxySelection] 代理切换: ${groupName} -> ${proxyName}`)
+      }
 
       try {
-        if (current && !skipConfigSave) {
-          const selected = current.selected ? [...current.selected] : [];
-          const index = selected.findIndex((item) => item.name === groupName);
-
-          if (index < 0) {
-            selected.push({ name: groupName, now: proxyName });
-          } else {
-            selected[index] = { name: groupName, now: proxyName };
-          }
-          await patchCurrent({ selected });
+        if (isFixedProxy) {
+          await unfixedProxy(groupName)
+        } else {
+          await selectNodeForGroup(groupName, proxyName)
+        }
+        onSuccess?.()
+        syncTraySelection()
+        if (isFixedProxy) {
+          await forgetSelection(groupName)
+          debugLog(`[ProxySelection] 代理和状态同步完成: ${groupName}`)
+        } else {
+          await recordSelection(groupName, proxyName)
+          debugLog(
+            `[ProxySelection] 代理和状态同步完成: ${groupName} -> ${proxyName}`,
+          )
         }
 
-        await selectNodeForGroup(groupName, proxyName);
-        await syncTrayProxySelection();
-        debugLog(
-          `[ProxySelection] 代理和状态同步完成: ${groupName} -> ${proxyName}`,
-        );
-
-        onSuccess?.();
-
-        if (
-          config.enableConnectionCleanup &&
-          config.autoCloseConnection &&
-          previousProxy
-        ) {
-          setTimeout(() => cleanupConnections(previousProxy), 0);
+        if (enableConnectionCleanup && autoCloseConnection && previousProxy) {
+          void cleanupConnections(previousProxy)
         }
       } catch (error) {
         console.error(
           `[ProxySelection] 代理切换失败: ${groupName} -> ${proxyName}`,
           error,
-        );
-
-        try {
-          await selectNodeForGroup(groupName, proxyName);
-          await syncTrayProxySelection();
-          onSuccess?.();
-          debugLog(
-            `[ProxySelection] 代理切换回退成功: ${groupName} -> ${proxyName}`,
-          );
-        } catch (fallbackError) {
-          console.error(
-            `[ProxySelection] 代理切换回退也失败: ${groupName} -> ${proxyName}`,
-            fallbackError,
-          );
-          onError?.(fallbackError);
-        }
+        )
+        onError?.(error)
       }
     },
-  );
+    [
+      autoCloseConnection,
+      forgetSelection,
+      enableConnectionCleanup,
+      onError,
+      onSuccess,
+      recordSelection,
+      syncTraySelection,
+    ],
+  )
 
-  const handleSelectChange = useCallback(
+  const flushChangeQueue = useCallback(async () => {
+    if (isProcessingRef.current) return
+    isProcessingRef.current = true
+
+    try {
+      while (pendingRequestRef.current) {
+        const request = pendingRequestRef.current
+        pendingRequestRef.current = null
+        await executeChange(request)
+      }
+    } finally {
+      isProcessingRef.current = false
+      if (pendingRequestRef.current) {
+        void flushChangeQueue()
+      }
+    }
+  }, [executeChange])
+
+  const changeProxy = useCallback(
     (
       groupName: string,
+      proxyName: string,
       previousProxy?: string,
-      skipConfigSave: boolean = false,
-    ) =>
+      fixed?: string,
+    ) => {
+      pendingRequestRef.current = {
+        groupName,
+        proxyName,
+        previousProxy,
+        fixed,
+      }
+      void flushChangeQueue()
+    },
+    [flushChangeQueue],
+  )
+
+  const handleSelectChange = useCallback(
+    (groupName: string, previousProxy?: string, fixed?: string) =>
       (event: { target: { value: string } }) => {
-        const newProxy = event.target.value;
-        changeProxy(groupName, newProxy, previousProxy, skipConfigSave);
+        changeProxy(groupName, event.target.value, previousProxy, fixed)
       },
     [changeProxy],
-  );
+  )
 
   const handleProxyGroupChange = useCallback(
-    (group: { name: string; now?: string }, proxy: { name: string }) => {
-      changeProxy(group.name, proxy.name, group.now);
+    (
+      group: { name: string; now?: string; fixed?: string },
+      proxy: { name: string },
+    ) => {
+      changeProxy(group.name, proxy.name, group.now, group.fixed)
     },
     [changeProxy],
-  );
+  )
 
   return {
     changeProxy,
     handleSelectChange,
     handleProxyGroupChange,
-  };
-};
+  }
+}
